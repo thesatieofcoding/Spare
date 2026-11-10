@@ -41,7 +41,7 @@ Spare is that missing package. Before the user signs, your app asks **"Add US$0.
 ## How it works
 
 <p align="center">
-  <img src="docs/assets/confirmation-modal.png" width="420" alt="Spare confirmation modal: Add US$0.50 for Tellus Cooperative? with Add US$0.50 and Not now buttons">
+  <img src="docs/assets/confirmation-modal.png" width="420" alt="Spare confirmation modal: Add US$0.50 for Cooperative? with Add US$0.50 and Not now buttons">
 </p>
 
 | Transaction type | What Spare does | Signatures |
