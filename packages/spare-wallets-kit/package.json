@@ -1,0 +1,68 @@
+{
+  "name": "spare-wallets-kit",
+  "version": "0.1.0",
+  "description": "Stellar Wallets Kit wrapper that offers a Spare USDC micro-donation before signing.",
+  "type": "module",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "tsc --noEmit -p tsconfig.json",
+    "prepublishOnly": "pnpm run build"
+  },
+  "dependencies": {
+    "spare-sdk": "workspace:^"
+  },
+  "peerDependencies": {
+    "@creit.tech/stellar-wallets-kit": ">=1.0.0",
+    "@stellar/stellar-sdk": "^17.4.0"
+  },
+  "peerDependenciesMeta": {
+    "@creit.tech/stellar-wallets-kit": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@creit.tech/stellar-wallets-kit": "^2.8.0",
+    "@stellar/stellar-sdk": "^17.4.0",
+    "@types/node": "^22.0.0",
+    "happy-dom": "^18.0.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  },
+  "author": "Jesús Chávez Chávez",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thesatieofcoding/Spare.git",
+    "directory": "packages/spare-wallets-kit"
+  },
+  "homepage": "https://github.com/thesatieofcoding/Spare/tree/main/packages/spare-wallets-kit#readme",
+  "bugs": {
+    "url": "https://github.com/thesatieofcoding/Spare/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "stellar",
+    "donations",
+    "usdc",
+    "soroban",
+    "wallets-kit"
+  ]
+}

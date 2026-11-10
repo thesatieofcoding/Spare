@@ -1,0 +1,15 @@
+node_modules
+dist
+target
+coverage
+*.tsbuildinfo
+.DS_Store
+
+# Soroban test snapshots
+contracts/*/test_snapshots/
+
+# Local agent tooling
+.atl/
+
+# Private: funding SOW (personal emails, wallet)
+instawards-sow-*.md

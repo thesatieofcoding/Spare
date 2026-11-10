@@ -1,0 +1,60 @@
+{
+  "name": "spare-sdk",
+  "version": "0.1.0",
+  "description": "Add a per-transaction USDC micro-donation to any Stellar app.",
+  "type": "module",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "tsc --noEmit -p tsconfig.json",
+    "prepublishOnly": "pnpm run build"
+  },
+  "dependencies": {
+    "smol-toml": "^1.9.1"
+  },
+  "peerDependencies": {
+    "@stellar/stellar-sdk": "^17.4.0"
+  },
+  "devDependencies": {
+    "@stellar/stellar-sdk": "^17.4.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  },
+  "author": "Jesús Chávez Chávez",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thesatieofcoding/Spare.git",
+    "directory": "packages/spare-sdk"
+  },
+  "homepage": "https://github.com/thesatieofcoding/Spare/tree/main/packages/spare-sdk#readme",
+  "bugs": {
+    "url": "https://github.com/thesatieofcoding/Spare/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "stellar",
+    "donations",
+    "usdc",
+    "soroban",
+    "wallets-kit"
+  ]
+}
