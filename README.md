@@ -6,6 +6,15 @@
 <h1 align="center">spare</h1>
 
 <p align="center">
+  <a href="https://www.npmjs.com/package/spare-sdk"><img alt="spare-sdk on npm" src="https://img.shields.io/npm/v/spare-sdk?label=spare-sdk&color=3E6650"></a>
+  <a href="https://www.npmjs.com/package/spare-wallets-kit"><img alt="spare-wallets-kit on npm" src="https://img.shields.io/npm/v/spare-wallets-kit?label=spare-wallets-kit&color=3E6650"></a>
+  <a href="https://github.com/thesatieofcoding/Spare/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/thesatieofcoding/Spare/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://www.npmjs.com/package/spare-sdk#provenance"><img alt="npm provenance" src="https://img.shields.io/badge/npm-provenance-3E6650"></a>
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-3E6650"></a>
+  <a href="https://spare-vert.vercel.app"><img alt="Website" src="https://img.shields.io/badge/website-spare--vert.vercel.app-3E6650"></a>
+</p>
+
+<p align="center">
   <strong>Add a little, or skip.</strong><br>
   An open-source kit that lets any Stellar app offer a per-transaction USDC donation at signing time.<br>
   The donation goes straight to the foundation. Spare never holds funds and takes no cut.
