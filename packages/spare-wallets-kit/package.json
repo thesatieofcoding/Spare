@@ -1,6 +1,6 @@
 {
   "name": "spare-wallets-kit",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Stellar Wallets Kit wrapper that offers a Spare USDC micro-donation before signing.",
   "type": "module",
   "license": "MIT",
