@@ -1,0 +1,64 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Button from "../components/Button.astro";
+import TextLink from "../components/TextLink.astro";
+---
+
+<BaseLayout lang="en" title="Page not found — Spare" noindex>
+  <section class="nf container">
+    <p class="eyebrow">404</p>
+    <h1 class="h2">This page skipped.</h1>
+    <p class="lead">The link may be old or mistyped. Nothing was charged and nothing moved.</p>
+    <div class="nf__actions">
+      <Button href="/en/">Back to home</Button>
+      <TextLink href="/en/docs/">Read the docs</TextLink>
+    </div>
+
+    <hr class="nf__rule" />
+
+    <div lang="es" class="nf__es">
+      <h2 class="h4">Esta página se saltó.</h2>
+      <p class="lead">El enlace puede estar viejo o mal escrito. No se cobró ni se movió nada.</p>
+      <div class="nf__actions">
+        <TextLink href="/es/">Volver al inicio</TextLink>
+        <TextLink href="/es/docs/">Leer la documentación</TextLink>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .nf {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
+    padding-block: var(--space-20) var(--space-24);
+    min-height: 60vh;
+    max-width: 720px;
+  }
+  .lead {
+    color: var(--text-secondary);
+    font-size: 16px;
+    line-height: 24px;
+  }
+  .nf__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-6);
+    margin-top: var(--space-2);
+  }
+  .nf__rule {
+    width: 100%;
+    border: 0;
+    border-top: 1px solid var(--border);
+    margin-block: var(--space-8);
+  }
+  .nf__es {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+</style>

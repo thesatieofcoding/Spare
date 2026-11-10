@@ -8,12 +8,17 @@ interface Props {
   lang: Lang;
   title?: string;
   description?: string;
+  noindex?: boolean;
 }
-const { lang } = Astro.props;
+const { lang, noindex = false } = Astro.props;
 const t = getMessages(lang);
 const title = Astro.props.title ?? t.meta.title;
 const description = Astro.props.description ?? t.meta.description;
 const pathname = Astro.url.pathname;
+const site = Astro.site ?? new URL("https://spare-vert.vercel.app");
+const canonical = new URL(pathname, site).href;
+const ogImage = new URL("/og.png", site).href;
+const ogImageAlt = "Spare — Add a little, or skip. Open-source micro-donations on Stellar.";
 ---
 
 <!doctype html>
@@ -25,6 +30,23 @@ const pathname = Astro.url.pathname;
     <link rel="icon" type="image/svg+xml" href="/brand/mark-cream.svg" />
     <meta name="description" content={description} />
     <meta name="color-scheme" content="light dark" />
+    {noindex ? <meta name="robots" content="noindex" /> : <link rel="canonical" href={canonical} />}
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Spare" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:locale" content={lang === "es" ? "es_ES" : "en_US"} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={ogImageAlt} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@sparexlm" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+    <meta name="twitter:image:alt" content={ogImageAlt} />
     {LANGS.map((l) => <link rel="alternate" hreflang={l} href={switchLangPath(pathname, l)} />)}
     <link rel="alternate" hreflang="x-default" href={localizePath("en", "")} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
