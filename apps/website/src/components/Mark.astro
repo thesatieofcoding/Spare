@@ -1,0 +1,22 @@
+---
+/** Official Spare mark (rings-and-person). Never redrawn: the exported SVG is used as a mask, recoloured only ink (light) / cream (dark). */
+interface Props {
+  size?: number;
+}
+const { size = 32 } = Astro.props;
+---
+
+<span
+  class="mark"
+  style={`--glyph:url(/brand/mark-charcoal.svg);width:${size}px;height:${size}px`}
+  aria-hidden="true"></span>
+
+<style>
+  .mark {
+    display: inline-block;
+    flex: none;
+    background-color: var(--mark);
+    -webkit-mask: var(--glyph) center / contain no-repeat;
+    mask: var(--glyph) center / contain no-repeat;
+  }
+</style>

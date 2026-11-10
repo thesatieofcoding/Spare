@@ -1,0 +1,127 @@
+---
+import Inline from "../Inline.astro";
+import { getHomeFaq } from "../../i18n/docs";
+import { getMessages, type Lang } from "../../i18n/utils";
+import { docHref } from "../../lib/docs-nav";
+import TextLink from "../TextLink.astro";
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const t = getMessages(lang).faq;
+const items = getHomeFaq(lang);
+---
+
+<!-- Addition not in Figma: native <details> accordion built from existing tokens. Same Q&A source as the docs FAQ page. -->
+<section class="faq" id="faq" aria-labelledby="faq-title">
+  <div class="container">
+    <div class="faq__inner">
+      <p class="eyebrow">{t.eyebrow}</p>
+      <h2 id="faq-title" class="h2">{t.title}</h2>
+      <div class="list">
+        {
+          items.map((f) => (
+            <details class="item">
+              <summary>
+                <span class="item__q">{f.q}</span>
+                <span class="chev" aria-hidden="true"></span>
+              </summary>
+              <div class="item__a"><p><Inline text={f.a} lang={lang} /></p></div>
+            </details>
+          ))
+        }
+      </div>
+      <TextLink href={docHref(lang, "faq")}>{t.seeAll}</TextLink>
+    </div>
+  </div>
+</section>
+
+<style>
+  .faq {
+    padding-top: var(--space-2);
+    padding-bottom: var(--space-10);
+  }
+  .faq__inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-4);
+    max-width: 800px;
+    margin-inline: auto;
+    text-align: center;
+  }
+  .list {
+    width: 100%;
+    margin-block: var(--space-2);
+    border-top: 1px solid var(--border);
+    text-align: left;
+  }
+  .item {
+    border-bottom: 1px solid var(--border);
+  }
+  summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    min-height: 56px;
+    padding-block: var(--space-3);
+    list-style: none;
+    cursor: pointer;
+  }
+  summary::-webkit-details-marker {
+    display: none;
+  }
+  .item__q {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    font-size: 18px;
+    line-height: 24px;
+    color: var(--text-primary);
+  }
+  .chev {
+    flex: none;
+    width: 10px;
+    height: 10px;
+    margin-right: var(--space-1);
+    border-right: 1.5px solid var(--text-secondary);
+    border-bottom: 1.5px solid var(--text-secondary);
+    transform: rotate(45deg);
+    transition: transform 0.2s ease;
+  }
+  .item[open] .chev {
+    transform: rotate(-135deg);
+  }
+  .item__a {
+    padding-bottom: var(--space-4);
+    font-size: 14px;
+    line-height: 22px;
+    color: var(--text-secondary);
+  }
+  @media (min-width: 900px) {
+    .faq {
+      padding-top: var(--space-10);
+      padding-bottom: var(--space-24);
+    }
+    .faq__inner {
+      gap: var(--space-2);
+    }
+    .list {
+      margin-block: var(--space-6);
+    }
+    .item__q {
+      font-size: 22px;
+      line-height: 28px;
+    }
+    .item__a {
+      font-size: 16px;
+      line-height: 24px;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .chev {
+      transition: none;
+    }
+  }
+</style>

@@ -1,0 +1,157 @@
+---
+import TextLink from "../TextLink.astro";
+import { getMessages, localizePath, type Lang } from "../../i18n/utils";
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const t = getMessages(lang).how;
+---
+
+<section class="how" id="how-it-works" aria-labelledby="how-title">
+  <div class="container">
+    <div class="header">
+      <h2 id="how-title" class="title">{t.title}</h2>
+      <div class="docs-link"><TextLink href={localizePath(lang, "docs")}>{t.docsLink}</TextLink></div>
+    </div>
+    <ol class="steps">
+      {
+        t.steps.map((s, i) => (
+          <li class="step">
+            <span class="step__num" aria-hidden="true">{i + 1}</span>
+            <div class="step__copy">
+              <h3 class="step__title">{s.title}</h3>
+              <p class="step__body">{s.body}</p>
+            </div>
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+</section>
+
+<style>
+  .how {
+    padding-top: var(--space-2);
+    padding-bottom: var(--space-10);
+  }
+  .header {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-5);
+    margin-bottom: var(--space-5);
+  }
+  .title {
+    font-family: var(--font-sans);
+    font-weight: 500;
+    font-size: 14px;
+    line-height: 20px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-accent);
+  }
+  .docs-link {
+    display: none;
+  }
+  .steps {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .step {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .step__num {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    font-size: 22px;
+    line-height: 28px;
+    color: var(--text-accent);
+  }
+  .step__copy {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .step__title {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    font-size: 18px;
+    line-height: 24px;
+    color: var(--text-primary);
+  }
+  .step__body {
+    font-size: 14px;
+    line-height: 22px;
+    color: var(--text-secondary);
+  }
+
+  @media (min-width: 900px) {
+    .how {
+      padding-top: var(--space-20);
+      padding-bottom: var(--space-24);
+    }
+    .header {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--space-12);
+    }
+    .title {
+      font-family: var(--font-serif);
+      font-size: 32px;
+      line-height: 40px;
+      letter-spacing: 0;
+      color: var(--text-primary);
+    }
+    .docs-link {
+      display: block;
+    }
+    .steps {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--space-12);
+    }
+    .steps::before {
+      content: "";
+      position: absolute;
+      left: 20px;
+      top: 19px;
+      height: 2px;
+      width: calc((100% - 96px) * 2 / 3 + 96px);
+      background: var(--field);
+    }
+    .step {
+      position: relative;
+      gap: var(--space-4);
+    }
+    .step__num {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius-full);
+      background: var(--field);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      line-height: 20px;
+      color: var(--on-field);
+    }
+    .step__copy {
+      gap: var(--space-2);
+    }
+    .step__title {
+      font-size: 22px;
+      line-height: 28px;
+    }
+  }
+</style>

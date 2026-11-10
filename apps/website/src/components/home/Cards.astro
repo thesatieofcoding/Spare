@@ -1,0 +1,114 @@
+---
+import { getMessages, type Lang } from "../../i18n/utils";
+
+interface Props {
+  lang: Lang;
+}
+const t = getMessages(Astro.props.lang).cards;
+---
+
+<!-- Not present in the Figma mobile layout (390px): shown from tablet up. -->
+<section class="cards" aria-label="Spare in three steps">
+  <ul class="container cards__grid">
+    <li class="card">
+      <div class="art art--checkout">
+        <img src="/illustrations/c-checkout.svg" alt="" width="336" height="269" loading="lazy" />
+      </div>
+      <div class="copy">
+        <h3 class="h4">{t.integrate.title}</h3>
+        <p class="body">{t.integrate.body}</p>
+      </div>
+    </li>
+    <li class="card card--band">
+      <div class="art art--coins">
+        <img src="/illustrations/g-coins.svg" alt="" width="420" height="280" loading="lazy" />
+      </div>
+      <div class="copy">
+        <h3 class="h4">{t.give.title}</h3>
+        <p class="body">{t.give.body}</p>
+      </div>
+    </li>
+    <li class="card">
+      <div class="art art--volunteer">
+        <img src="/illustrations/d-volunteer.svg" alt="" width="201" height="220" loading="lazy" />
+      </div>
+      <div class="copy">
+        <h3 class="h4">{t.receive.title}</h3>
+        <p class="body">{t.receive.body}</p>
+      </div>
+    </li>
+  </ul>
+</section>
+
+<style>
+  .cards {
+    display: none;
+  }
+  @media (min-width: 900px) {
+    .cards {
+      display: block;
+      padding-bottom: var(--space-20);
+    }
+    .cards__grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--space-6);
+    }
+    .card {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-6);
+      padding: var(--space-6) var(--space-6) var(--space-8);
+      background: var(--surface);
+      border-radius: var(--radius-24);
+      overflow: hidden;
+    }
+    .card--band {
+      background: var(--band);
+    }
+    .card--band .h4 {
+      color: var(--on-band);
+    }
+    .card--band .body {
+      color: var(--on-band-muted);
+    }
+    .art {
+      position: relative;
+      height: 220px;
+      overflow: hidden;
+      border-radius: var(--radius-16);
+    }
+    .art img {
+      position: absolute;
+      max-width: none;
+      height: auto;
+    }
+    .art--checkout img {
+      left: 0;
+      top: -24px;
+      width: 100%;
+    }
+    .art--coins img {
+      left: -12.5%;
+      top: -24px;
+      width: 125%;
+    }
+    .art--volunteer img {
+      left: 50%;
+      top: 0;
+      width: auto;
+      height: 100%;
+      transform: translateX(-50%);
+    }
+    .copy {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+    .body {
+      font-size: 14px;
+      line-height: 20px;
+      color: var(--text-secondary);
+    }
+  }
+</style>

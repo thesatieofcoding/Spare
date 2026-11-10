@@ -1,0 +1,376 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import CodeBlock from "./CodeBlock.astro";
+import Inline from "./Inline.astro";
+import { getDocs, getFaq } from "../i18n/docs";
+import { getMessages, type Lang } from "../i18n/utils";
+import { DOC_SLUGS, docHref, pagerFor, type DocSlug } from "../lib/docs-nav";
+
+interface Props {
+  lang: Lang;
+  slug: DocSlug;
+}
+const { lang, slug } = Astro.props;
+const t = getMessages(lang).docs;
+const docs = getDocs(lang);
+const page = docs[slug];
+const faq = getFaq(lang);
+const toc = page.blocks.flatMap((b) => (b.t === "h2" ? [{ id: b.id, label: b.toc ?? b.text }] : b.t === "callout" && b.id ? [{ id: b.id, label: "" }] : []));
+const tocItems = toc.filter((i) => i.label);
+if (slug === "quick-start") {
+  const cal = toc.find((i) => i.id === "next-step");
+  if (cal) tocItems.push({ id: "next-step", label: lang === "es" ? "Siguiente paso" : "Next step" });
+}
+if (slug === "faq") for (const f of faq) tocItems.push({ id: f.id, label: f.q });
+const { prev, next } = pagerFor(slug);
+---
+
+<BaseLayout lang={lang} title={page.metaTitle}>
+  <div class="container docs">
+    <details class="mobile-nav">
+      <summary>{t.sidebarLabel}: {page.title}</summary>
+      <ul>
+        {DOC_SLUGS.map((s) => <li><a href={docHref(lang, s)} aria-current={s === slug ? "page" : undefined}>{docs[s].title}</a></li>)}
+      </ul>
+    </details>
+
+    <aside class="sidebar" aria-label={t.sidebarLabel}>
+      <ul>
+        {
+          DOC_SLUGS.map((s) => (
+            <li>
+              <a href={docHref(lang, s)} class:list={[{ "is-current": s === slug }]} aria-current={s === slug ? "page" : undefined}>
+                {docs[s].title}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </aside>
+
+    <article class="main" id={slug}>
+      <header class="header">
+        <p class="eyebrow">{t.eyebrow}</p>
+        <h1 class="title">{page.title}</h1>
+        <p class="lead"><Inline text={page.lead} lang={lang} /></p>
+      </header>
+
+      {
+        page.blocks.map((b) => {
+          if (b.t === "p") return <p class="p"><Inline text={b.text} lang={lang} /></p>;
+          if (b.t === "h2") return <h2 id={b.id} class="h2sec">{b.text}</h2>;
+          if (b.t === "h3") return <h3 class="h3sec">{b.text}</h3>;
+          if (b.t === "code") return <CodeBlock code={b.code} label={b.label ?? t.codeLabel} copyLabel={t.copy} copiedLabel={t.copied} wrap={!b.code.includes("\n")} />;
+          if (b.t === "list") return <ul class="list">{b.items.map((i) => <li><Inline text={i} lang={lang} /></li>)}</ul>;
+          if (b.t === "table")
+            return (
+              <div class="tablewrap" tabindex="0" role="region" aria-label={t.codeLabel}>
+                <table>
+                  <thead><tr>{b.head.map((h) => <th scope="col">{h}</th>)}</tr></thead>
+                  <tbody>{b.rows.map((r) => <tr>{r.map((c) => <td><Inline text={c} lang={lang} /></td>)}</tr>)}</tbody>
+                </table>
+              </div>
+            );
+          if (b.t === "callout") return <aside class="callout" id={b.id}><h2 class="callout__title">{b.title}</h2><p class="callout__body"><Inline text={b.body} lang={lang} /></p></aside>;
+          if (b.t === "planned") return <aside class="callout planned"><p class="badge">{b.title}</p><p class="callout__body"><Inline text={b.body} lang={lang} /></p></aside>;
+          if (b.t === "faq")
+            return faq.map((f) => (
+              <section class="qa" id={f.id} aria-labelledby={`${f.id}-q`}>
+                <h2 id={`${f.id}-q`} class="h2sec">{f.q}</h2>
+                <p class="p"><Inline text={f.a} lang={lang} /></p>
+              </section>
+            ));
+          return null;
+        })
+      }
+
+      <nav class="pager" aria-label={t.pagerLabel}>
+        {prev ? <a class="pager__prev" href={docHref(lang, prev)} rel="prev">←  {docs[prev].title}</a> : <span />}
+        {next ? <a class="pager__next" href={docHref(lang, next)} rel="next">{docs[next].title}  →</a> : <span />}
+      </nav>
+    </article>
+
+    <nav class="toc" aria-label={t.tocTitle}>
+      <p class="toc__title">{t.tocTitle}</p>
+      <ul>
+        {tocItems.map((i) => <li><a href={`#${i.id}`}>{i.label}</a></li>)}
+      </ul>
+    </nav>
+  </div>
+</BaseLayout>
+
+<style>
+  .docs {
+    display: block;
+    padding-top: var(--space-6);
+    padding-bottom: var(--space-10);
+  }
+  .sidebar,
+  .toc {
+    display: none;
+  }
+  .mobile-nav {
+    margin-bottom: var(--space-6);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-16);
+    background: var(--surface);
+  }
+  .mobile-nav summary {
+    padding: var(--space-3) var(--space-4);
+    font-weight: 500;
+    cursor: pointer;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+  .mobile-nav ul {
+    display: flex;
+    flex-direction: column;
+    padding: 0 var(--space-4) var(--space-3);
+  }
+  .mobile-nav a {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    color: var(--text-primary);
+  }
+  .mobile-nav a[aria-current="page"] {
+    font-weight: 500;
+    color: var(--text-accent);
+  }
+  .main {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-width: 0;
+  }
+  .header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+  .title {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    font-size: 36px;
+    line-height: 44px;
+    color: var(--text-primary);
+    overflow-wrap: anywhere;
+  }
+  .lead {
+    font-size: 16px;
+    line-height: 24px;
+    color: var(--text-primary);
+  }
+  .p,
+  .list {
+    font-size: 14px;
+    line-height: 22px;
+    color: var(--text-primary);
+  }
+  .list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding-left: var(--space-5);
+    list-style: disc;
+  }
+  .h2sec {
+    margin-top: var(--space-4);
+    font-family: var(--font-serif);
+    font-weight: 500;
+    font-size: 22px;
+    line-height: 28px;
+    color: var(--text-primary);
+    scroll-margin-top: 96px;
+  }
+  .h3sec {
+    font-weight: 500;
+    font-size: 16px;
+    line-height: 24px;
+    color: var(--text-primary);
+  }
+  .qa {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    scroll-margin-top: 96px;
+  }
+  .qa .h2sec {
+    margin-top: 0;
+  }
+  .tablewrap {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-16);
+    scrollbar-width: thin;
+    scrollbar-color: var(--text-secondary) transparent;
+  }
+  table {
+    width: 100%;
+    min-width: 520px;
+    border-collapse: collapse;
+    font-size: 14px;
+    line-height: 20px;
+  }
+  th,
+  td {
+    padding: var(--space-3) var(--space-4);
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--border);
+  }
+  th {
+    font-weight: 500;
+    color: var(--text-primary);
+    background: var(--bg-subtle);
+    white-space: nowrap;
+  }
+  td {
+    color: var(--text-secondary);
+  }
+  tr:last-child td {
+    border-bottom: 0;
+  }
+  .callout {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-4);
+    border-radius: 12px;
+    background: var(--surface);
+    scroll-margin-top: 96px;
+  }
+  .callout__title {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    font-size: 18px;
+    line-height: 24px;
+    color: var(--text-primary);
+  }
+  .callout__body {
+    font-size: 14px;
+    line-height: 22px;
+    color: var(--text-secondary);
+  }
+  .badge {
+    align-self: flex-start;
+    padding: 2px var(--space-3);
+    border-radius: var(--radius-full);
+    background: var(--accent);
+    color: var(--on-accent);
+    font-weight: 500;
+  }
+  .pager {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-4);
+    margin-top: var(--space-4);
+    font-weight: 500;
+    color: var(--text-accent);
+    white-space: pre;
+  }
+  .pager a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .pager a:hover {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+
+  @media (min-width: 900px) {
+    .docs {
+      display: grid;
+      grid-template-columns: 240px minmax(0, 640px);
+      column-gap: var(--space-12);
+      padding-top: var(--space-16);
+      padding-bottom: var(--space-20);
+    }
+    .mobile-nav {
+      display: none;
+    }
+    .sidebar {
+      display: block;
+    }
+    .sidebar ul,
+    .toc ul {
+      display: flex;
+      flex-direction: column;
+    }
+    .sidebar ul {
+      gap: var(--space-2);
+    }
+    .sidebar a {
+      color: var(--text-primary);
+    }
+    .sidebar .is-current {
+      font-weight: 500;
+      color: var(--text-accent);
+    }
+    .sidebar a:hover {
+      color: var(--text-accent);
+    }
+    .main {
+      gap: var(--space-8);
+    }
+    .title {
+      font-size: 48px;
+      line-height: 56px;
+    }
+    .lead {
+      font-size: 18px;
+      line-height: 28px;
+      color: var(--text-secondary);
+    }
+    .p,
+    .list {
+      font-size: 16px;
+      line-height: 24px;
+      color: var(--text-secondary);
+    }
+    .h2sec {
+      margin-top: 0;
+    }
+    .callout {
+      padding: var(--space-6);
+      border-radius: var(--radius-16);
+      background: var(--bg-subtle);
+    }
+    .callout__title {
+      font-size: 22px;
+      line-height: 28px;
+    }
+    .callout__body {
+      font-size: 16px;
+      line-height: 24px;
+    }
+  }
+
+  @media (min-width: 1100px) {
+    .docs {
+      grid-template-columns: 240px minmax(0, 640px) 200px;
+    }
+    .toc {
+      display: block;
+      position: sticky;
+      top: var(--space-6);
+      align-self: start;
+    }
+    .toc__title {
+      margin-bottom: var(--space-3);
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+    }
+    .toc ul {
+      gap: var(--space-3);
+      color: var(--text-secondary);
+    }
+    .toc a:hover {
+      color: var(--text-accent);
+    }
+  }
+</style>

@@ -1,0 +1,25 @@
+---
+import Cards from "../../components/home/Cards.astro";
+import Features from "../../components/home/Features.astro";
+import Hero from "../../components/home/Hero.astro";
+import Faq from "../../components/home/Faq.astro";
+import HowItWorks from "../../components/home/HowItWorks.astro";
+import Idea from "../../components/home/Idea.astro";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { LANGS, type Lang } from "../../i18n/utils";
+
+export function getStaticPaths() {
+  return LANGS.map((lang) => ({ params: { lang } }));
+}
+
+const lang = Astro.params.lang as Lang;
+---
+
+<BaseLayout lang={lang}>
+  <Hero lang={lang} />
+  <Idea lang={lang} />
+  <Features lang={lang} />
+  <Cards lang={lang} />
+  <HowItWorks lang={lang} />
+  <Faq lang={lang} />
+</BaseLayout>

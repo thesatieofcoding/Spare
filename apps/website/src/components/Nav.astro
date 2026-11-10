@@ -1,0 +1,229 @@
+---
+import { getMessages, localizePath, type Lang } from "../i18n/utils";
+import Button from "./Button.astro";
+import { docHref } from "../lib/docs-nav";
+import Glyph from "./Glyph.astro";
+import LanguageSwitcher from "./LanguageSwitcher.astro";
+import Mark from "./Mark.astro";
+import SocialLinks from "./SocialLinks.astro";
+import ThemeToggle from "./ThemeToggle.astro";
+
+interface Props {
+  lang: Lang;
+  pathname: string;
+}
+const { lang, pathname } = Astro.props;
+const t = getMessages(lang);
+---
+
+<header class="nav" data-nav>
+  <div class="container nav__inner">
+    <div class="nav__bar">
+      <a class="lockup" href={localizePath(lang, "")} aria-label={t.a11y.home}>
+        <Mark size={32} />
+        <span class="lockup__word">spare</span>
+      </a>
+      <div class="nav__actions">
+        <Button href={docHref(lang, "quick-start")}>{t.nav.getStarted}</Button>
+        <button
+          type="button"
+          class="nav__toggle"
+          aria-expanded="false"
+          aria-controls="site-menu"
+          aria-label={t.a11y.menuOpen}
+          data-label-open={t.a11y.menuOpen}
+          data-label-close={t.a11y.menuClose}
+          data-nav-toggle
+        >
+          <Glyph src="/icons/menu.svg" class="nav__icon nav__icon--menu" />
+          <Glyph src="/icons/close.svg" class="nav__icon nav__icon--close" />
+        </button>
+      </div>
+    </div>
+
+    <div class="nav__panel" id="site-menu" hidden data-nav-panel>
+      <nav aria-label={t.a11y.mainNav}>
+        <ul class="nav__links">
+          {
+            t.nav.links.map((l) => (
+              <li>
+                <a href={localizePath(lang, l.href)} data-nav-link>
+                  {l.label}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </nav>
+      <div class="nav__meta">
+        <div class="nav__controls">
+          <LanguageSwitcher lang={lang} pathname={pathname} label={t.a11y.langSwitcher} />
+          <ThemeToggle label={t.nav.darkMode} />
+        </div>
+        <SocialLinks xLabel={t.footer.socialX} githubLabel={t.footer.socialGithub} />
+      </div>
+    </div>
+  </div>
+</header>
+
+<style>
+  .nav {
+    position: relative;
+    z-index: 20;
+    padding-block: var(--space-2);
+  }
+  .nav__inner {
+    position: relative;
+  }
+  .nav__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+    background: var(--bg-page);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+  }
+  .lockup {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .lockup__word {
+    font-family: var(--font-sans);
+    font-weight: 500;
+    font-size: 20px;
+    line-height: 24px;
+    color: var(--text-primary);
+  }
+  .nav__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  .nav__toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border-radius: var(--radius-full);
+    color: var(--text-primary);
+    transition: background-color 0.15s ease;
+  }
+  .nav__toggle:hover,
+  .nav__toggle:active {
+    background: var(--bg-subtle);
+  }
+  .nav__toggle :global(.nav__icon--close),
+  .nav__toggle[aria-expanded="true"] :global(.nav__icon--menu) {
+    display: none;
+  }
+  .nav__toggle[aria-expanded="true"] :global(.nav__icon--close) {
+    display: inline-block;
+  }
+  .nav__panel {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + var(--space-2));
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    padding: var(--space-6) var(--space-5) var(--space-6);
+    background: var(--bg-page);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-24);
+  }
+  .nav__panel[hidden] {
+    display: none;
+  }
+  .nav__links {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    font-family: var(--font-serif);
+    font-weight: 500;
+    font-size: 28px;
+    line-height: 36px;
+    color: var(--text-primary);
+  }
+  .nav__links a:hover {
+    color: var(--text-accent);
+  }
+  .nav__meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+  .nav__controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  .nav__meta :global(.social) {
+    margin-left: calc(-1 * var(--space-3));
+  }
+
+  @media (min-width: 900px) {
+    .nav {
+      padding-block: var(--space-4);
+    }
+    .nav__bar {
+      padding: var(--space-3) var(--space-3) var(--space-3) var(--space-5);
+      background: transparent;
+      border-color: transparent;
+    }
+    .nav__links {
+      font-size: 32px;
+      line-height: 40px;
+    }
+    /* Desktop: compact dropdown sized to its content, anchored under the toggle */
+    .nav__panel {
+      left: auto;
+      right: 0;
+      width: max-content;
+      min-width: 280px;
+      max-width: min(420px, 100%);
+      padding: var(--space-6);
+      box-shadow: 0 12px 32px rgb(0 0 0 / 0.12);
+    }
+  }
+</style>
+
+<script>
+  const root = document.querySelector<HTMLElement>("[data-nav]");
+  const toggle = root?.querySelector<HTMLButtonElement>("[data-nav-toggle]");
+  const panel = root?.querySelector<HTMLElement>("[data-nav-panel]");
+
+  if (root && toggle && panel) {
+    const setOpen = (open: boolean, returnFocus = false) => {
+      toggle.setAttribute("aria-expanded", String(open));
+      toggle.setAttribute("aria-label", (open ? toggle.dataset.labelClose : toggle.dataset.labelOpen) ?? "");
+      panel.hidden = !open;
+      if (open) panel.querySelector<HTMLElement>("a")?.focus();
+      else if (returnFocus) toggle.focus();
+    };
+    const isOpen = () => toggle.getAttribute("aria-expanded") === "true";
+
+    toggle.addEventListener("click", () => setOpen(!isOpen()));
+    panel.addEventListener("click", (e) => {
+      if ((e.target as HTMLElement).closest("[data-nav-link]")) setOpen(false);
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && isOpen()) setOpen(false, true);
+    });
+    document.addEventListener("click", (e) => {
+      if (isOpen() && !root.contains(e.target as Node)) setOpen(false);
+    });
+    // Leaving the panel with Tab closes it (no focus trap needed: the panel is a plain list of links).
+    root.addEventListener("focusout", (e) => {
+      const next = (e as FocusEvent).relatedTarget as Node | null;
+      if (isOpen() && next && !root.contains(next)) setOpen(false);
+    });
+  }
+</script>

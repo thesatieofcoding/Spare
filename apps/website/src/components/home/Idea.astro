@@ -1,0 +1,70 @@
+---
+import { getMessages, type Lang } from "../../i18n/utils";
+
+interface Props {
+  lang: Lang;
+}
+const t = getMessages(Astro.props.lang).idea;
+---
+
+<section class="idea" aria-labelledby="idea-title">
+  <div class="container">
+    <div class="card">
+      <div class="card__inner">
+        <img
+          src="/illustrations/b-sharing.svg"
+          alt={t.illustrationAlt}
+          width="720"
+          height="466"
+          loading="lazy"
+        />
+        <div class="copy">
+          <p class="eyebrow">{t.eyebrow}</p>
+          <h2 id="idea-title" class="h2">{t.headline}</h2>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .idea {
+    padding-top: var(--space-6);
+    padding-bottom: var(--space-8);
+  }
+  .card__inner {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  .card__inner img {
+    width: 100%;
+    height: auto;
+  }
+  .copy {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  @media (min-width: 900px) {
+    .idea {
+      padding-top: var(--space-8);
+      padding-bottom: var(--space-20);
+    }
+    .card {
+      padding: 33px var(--space-10) 41px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-24);
+    }
+    .card__inner {
+      max-width: 720px;
+      margin-inline: auto;
+      text-align: center;
+    }
+    .copy {
+      align-items: center;
+    }
+  }
+</style>

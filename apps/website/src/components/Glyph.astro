@@ -1,0 +1,14 @@
+---
+/** Decorative glyph rendered from an official Figma SVG used as a CSS mask. Colour = currentColor. */
+interface Props {
+  src: string;
+  size?: number;
+  class?: string;
+}
+const { src, size = 24, class: className } = Astro.props;
+---
+
+<span
+  class:list={["glyph", className]}
+  style={`--glyph:url(${src});width:${size}px;height:${size}px`}
+  aria-hidden="true"></span>

@@ -1,0 +1,23 @@
+{
+  "name": "@spare/website",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check",
+    "test": "vitest run",
+    "typecheck": "astro check",
+    "lint": "astro check"
+  },
+  "dependencies": {
+    "astro": "7.4.8"
+  },
+  "devDependencies": {
+    "@astrojs/check": "0.9.12",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}

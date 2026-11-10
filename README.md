@@ -88,6 +88,7 @@ Building your own UI? Use [`spare-sdk`](packages/spare-sdk) directly: `addDonati
 | [`spare-sdk`](packages/spare-sdk) | Core TypeScript library: classic bundling, Soroban follow-up, eligibility checks, `stellar.toml` verification. | ✅ Built · 77 tests |
 | [`spare-wallets-kit`](packages/spare-wallets-kit) | Stellar Wallets Kit wrapper with an accessible confirmation modal (EN/ES, light/dark). | ✅ Built · 37 tests |
 | [`contracts/registry`](contracts/registry) | Soroban foundation registry. No admin, no upgrade function, no funds. | ✅ Built · 31 tests · not deployed |
+| [`apps/website`](apps/website) | Marketing + docs site (Astro, EN/ES, light/dark). Home and Docs built; Foundations, Dashboard and Demo pending. | 🚧 In progress |
 | Indexer | Ingests registry events and tagged USDC payments; rebuildable from Horizon. | 🔜 Planned |
 | Dashboard | Public per-foundation pages with totals, apps and transaction links. | 🔜 Planned |
 | Demo app | Classic payment + donation and Soroban call + follow-up, on mainnet. | 🔜 Planned |

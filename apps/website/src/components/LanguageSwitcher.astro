@@ -1,0 +1,55 @@
+---
+import { LANGS, switchLangPath, type Lang } from "../i18n/utils";
+
+interface Props {
+  lang: Lang;
+  pathname: string;
+  label: string;
+}
+const { lang, pathname, label } = Astro.props;
+---
+
+<nav class="switcher" aria-label={label}>
+  {
+    LANGS.map((l) => (
+      <a
+        href={switchLangPath(pathname, l)}
+        lang={l}
+        hreflang={l}
+        aria-current={l === lang ? "true" : undefined}
+        class:list={["switcher__item", { "is-active": l === lang }]}
+      >
+        {l.toUpperCase()}
+      </a>
+    ))
+  }
+</nav>
+
+<style>
+  .switcher {
+    display: inline-flex;
+    gap: var(--space-1);
+    padding: var(--space-1);
+    background: var(--bg-page);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+  }
+  .switcher__item {
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-full);
+    font-weight: 500;
+    font-size: 14px;
+    line-height: 20px;
+    color: var(--text-secondary);
+  }
+  .switcher__item:hover {
+    color: var(--text-primary);
+  }
+  .switcher__item.is-active {
+    background: var(--inverse);
+    color: var(--on-inverse);
+  }
+  .switcher__item:focus-visible {
+    border-radius: var(--radius-full);
+  }
+</style>

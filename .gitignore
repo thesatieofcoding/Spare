@@ -13,3 +13,9 @@ contracts/*/test_snapshots/
 
 # Private: funding SOW (personal emails, wallet)
 instawards-sow-*.md
+
+# Local agent instructions
+CLAUDE.md
+
+# Browser automation artifacts
+.playwright-mcp/

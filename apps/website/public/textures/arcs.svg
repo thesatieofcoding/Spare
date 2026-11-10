@@ -1,0 +1,11 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="664" height="624" viewBox="0 0 664 624" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Decor / Arcs" opacity="0.28" clip-path="url(#clip0_0_4)">
+<path id="Decor / Arc 1" d="M47.4286 579.429C-28.0445 508.502 -70.4448 412.305 -70.4448 312C-70.4448 211.695 -28.0445 115.498 47.4286 44.5714C122.902 -26.355 225.265 -66.2011 332 -66.2011C438.735 -66.2011 541.098 -26.355 616.571 44.5714" stroke="#3E6650"/>
+<path id="Decor / Arc 2" d="M110.667 579.429C43.5795 516.383 5.89036 430.874 5.89036 341.714C5.89036 252.554 43.5795 167.046 110.667 104C177.754 40.9543 268.744 5.53552 363.619 5.53552C458.495 5.53552 549.484 40.9543 616.571 104" stroke="#3E6650"/>
+</g>
+<defs>
+<clipPath id="clip0_0_4">
+<rect width="664" height="624" fill="white"/>
+</clipPath>
+</defs>
+</svg>

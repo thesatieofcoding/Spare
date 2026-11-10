@@ -1,0 +1,144 @@
+---
+import Glyph from "../Glyph.astro";
+import { getMessages, type Lang } from "../../i18n/utils";
+
+interface Props {
+  lang: Lang;
+}
+const t = getMessages(Astro.props.lang).features;
+---
+
+<section class="features" aria-labelledby="features-title">
+  <div class="container features__grid">
+    <div class="intro">
+      <p class="eyebrow">{t.eyebrow}</p>
+      <h2 id="features-title" class="h2">{t.headline}</h2>
+    </div>
+    <ul class="items">
+      {
+        t.items.map((item) => (
+          <li class="item">
+            <Glyph src={`/icons/${item.icon}.svg`} />
+            <div class="item__copy">
+              <h3 class="item__title">{item.title}</h3>
+              <p class="item__body">{item.body}</p>
+            </div>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</section>
+
+<style>
+  .features {
+    padding-top: var(--space-2);
+    padding-bottom: var(--space-8);
+  }
+  .features__grid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+  }
+  .intro {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+  .items {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+  }
+  .item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    color: var(--text-primary);
+  }
+  .item__copy {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  .item__title {
+    margin: 0;
+    font-family: var(--font-serif);
+    font-weight: 500;
+    font-size: 18px;
+    line-height: 24px;
+  }
+  .item__body {
+    font-size: 14px;
+    line-height: 22px;
+    color: var(--text-secondary);
+  }
+
+  @media (min-width: 900px) {
+    .features {
+      padding-top: var(--space-10);
+      padding-bottom: var(--space-20);
+    }
+    .features__grid {
+      display: grid;
+      grid-template-columns: minmax(0, 360px) minmax(0, 1fr);
+      gap: var(--space-10);
+      align-items: start;
+    }
+    .intro {
+      gap: var(--space-4);
+    }
+    .items {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-6) 0;
+    }
+    .item {
+      position: relative;
+      gap: var(--space-4);
+      padding-inline: var(--space-6);
+      min-height: 140px;
+    }
+    .item:nth-child(even)::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 1px;
+      height: 140px;
+      background: var(--divider);
+    }
+    .item__title {
+      font-family: var(--font-sans);
+      font-size: 14px;
+      line-height: 20px;
+    }
+    .item__body {
+      font-size: 14px;
+      line-height: 20px;
+    }
+  }
+
+  @media (min-width: 1100px) {
+    .items {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0;
+    }
+    .item:nth-child(n + 2)::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 1px;
+      height: 140px;
+      background: var(--divider);
+    }
+  }
+
+  @media (min-width: 1300px) {
+    /* Figma: the four columns are 892px wide and run 92px past the 1200px content box. */
+    .items {
+      margin-right: -92px;
+    }
+  }
+</style>

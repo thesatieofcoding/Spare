@@ -1,0 +1,110 @@
+---
+interface Props {
+  code: string;
+  label: string;
+  copyLabel: string;
+  copiedLabel: string;
+  /** Wrap long single-line commands instead of scrolling. */
+  wrap?: boolean;
+}
+const { code, label, copyLabel, copiedLabel, wrap = false } = Astro.props;
+---
+
+<!-- Figma "Code block" (88:30200). Mono is the allowed exception for real code. tabindex makes long lines keyboard-scrollable. -->
+<div class="codewrap">
+  <pre class:list={["code", { "code--wrap": wrap }]} tabindex="0" aria-label={label}><code>{code}</code></pre>
+  <button type="button" class="copy" data-copy data-copied={copiedLabel} data-label={copyLabel}>
+    <span data-copy-text aria-hidden="true">{copyLabel}</span>
+    <span class="sr-only" role="status" aria-live="polite" data-copy-status></span>
+    <span class="sr-only">{copyLabel}: {label}</span>
+  </button>
+</div>
+
+<style>
+  .codewrap {
+    position: relative;
+  }
+  .code {
+    margin: 0;
+    padding: var(--space-4) 84px var(--space-4) var(--space-4);
+    overflow-x: auto;
+    border-radius: 12px;
+    background: var(--surface);
+    color: var(--text-primary);
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    font-size: 13px;
+    line-height: 22px;
+    tab-size: 2;
+    scrollbar-width: thin;
+    scrollbar-color: var(--text-secondary) transparent;
+  }
+  .code::-webkit-scrollbar {
+    height: 8px;
+  }
+  .code::-webkit-scrollbar-thumb {
+    background: var(--text-secondary);
+    border-radius: var(--radius-full);
+  }
+  .code--wrap {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .code code {
+    font: inherit;
+  }
+  .copy {
+    position: absolute;
+    top: var(--space-2);
+    right: var(--space-2);
+    min-height: 28px;
+    padding: 0 var(--space-3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    background: var(--bg-page);
+    color: var(--text-primary);
+    font-weight: 500;
+    font-size: 13px;
+    line-height: 20px;
+  }
+  .copy:hover {
+    background: var(--bg-subtle);
+  }
+  @media (min-width: 900px) {
+    .code {
+      padding: var(--space-6) 88px var(--space-6) var(--space-6);
+      border-radius: var(--radius-16);
+      background: var(--band);
+      color: var(--on-band);
+      line-height: 20px;
+      scrollbar-color: var(--on-band-muted) transparent;
+    }
+    .code::-webkit-scrollbar-thumb {
+      background: var(--on-band-muted);
+    }
+    .copy {
+      top: var(--space-3);
+      right: var(--space-3);
+    }
+  }
+</style>
+
+<script>
+  document.addEventListener("click", async (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-copy]");
+    if (!btn) return;
+    const text = btn.closest(".codewrap")?.querySelector("pre")?.textContent ?? "";
+    const label = btn.querySelector<HTMLElement>("[data-copy-text]");
+    const status = btn.querySelector<HTMLElement>("[data-copy-status]");
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      return;
+    }
+    if (label) label.textContent = btn.dataset.copied ?? "";
+    if (status) status.textContent = btn.dataset.copied ?? "";
+    window.setTimeout(() => {
+      if (label) label.textContent = btn.dataset.label ?? "";
+      if (status) status.textContent = "";
+    }, 2000);
+  });
+</script>

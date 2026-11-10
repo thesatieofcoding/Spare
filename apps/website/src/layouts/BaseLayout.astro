@@ -1,0 +1,52 @@
+---
+import "../styles/global.css";
+import Footer from "../components/Footer.astro";
+import Nav from "../components/Nav.astro";
+import { LANGS, getMessages, localizePath, switchLangPath, type Lang } from "../i18n/utils";
+
+interface Props {
+  lang: Lang;
+  title?: string;
+  description?: string;
+}
+const { lang } = Astro.props;
+const t = getMessages(lang);
+const title = Astro.props.title ?? t.meta.title;
+const description = Astro.props.description ?? t.meta.description;
+const pathname = Astro.url.pathname;
+---
+
+<!doctype html>
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <link rel="icon" type="image/svg+xml" href="/brand/mark-cream.svg" />
+    <meta name="description" content={description} />
+    <meta name="color-scheme" content="light dark" />
+    {LANGS.map((l) => <link rel="alternate" hreflang={l} href={switchLangPath(pathname, l)} />)}
+    <link rel="alternate" hreflang="x-default" href={localizePath("en", "")} />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500&family=Newsreader:ital,wght@0,500;1,500&display=swap"
+    />
+    <!-- Apply a stored light/dark choice before first paint (no flash). "auto" = follow the OS via CSS. -->
+    <script is:inline>
+      try {
+        var t = localStorage.getItem("spare-theme");
+        if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">{t.a11y.skipToContent}</a>
+    <Nav lang={lang} pathname={pathname} />
+    <main id="main">
+      <slot />
+    </main>
+    <Footer lang={lang} />
+  </body>
+</html>

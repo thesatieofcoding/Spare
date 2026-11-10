@@ -1,0 +1,275 @@
+---
+import { getMessages, localizePath, type Lang } from "../i18n/utils";
+import Button from "./Button.astro";
+import { docHref } from "../lib/docs-nav";
+import Mark from "./Mark.astro";
+import SocialLinks from "./SocialLinks.astro";
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const t = getMessages(lang);
+const hrefFor = (href: string) => (/^https?:/.test(href) ? href : localizePath(lang, href));
+---
+
+<footer class="footer-wrap">
+  <div class="footer">
+    <div class="cta">
+      <div class="cta__content">
+        <p class="cta__title">{t.footer.ctaTitle}</p>
+        <Button href={docHref(lang, "quick-start")} variant="inverse" size="lg">{t.footer.ctaButton}</Button>
+      </div>
+      <div class="wave" aria-hidden="true"></div>
+    </div>
+
+    <div class="body">
+      <div class="brand">
+        <div class="brand__lockup">
+          <div class="lockup">
+            <Mark size={40} />
+            <span class="lockup__word">spare</span>
+          </div>
+          <div class="character">
+            <img src="/illustrations/volunteer-footer.svg" alt={t.footer.characterAlt} width="120" height="131" loading="lazy" />
+          </div>
+        </div>
+        <p class="brand__tagline">{t.footer.tagline}</p>
+      </div>
+
+      <nav class="columns" aria-label="Footer">
+        {
+          t.footer.columns.map((col) => (
+            <div class="col">
+              <p class="col__title">{col.title}</p>
+              <ul class="col__list">
+                {col.links.map((l) => (
+                  <li>
+                    {l.href ? (
+                      <a href={hrefFor(l.href)} rel={/^https?:/.test(l.href) ? "noopener" : undefined}>
+                        {l.label}
+                      </a>
+                    ) : (
+                      <span>{l.label}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))
+        }
+      </nav>
+
+      <hr class="rule" />
+
+      <div class="bar">
+        <p class="legal">{t.footer.legal}</p>
+        <SocialLinks xLabel={t.footer.socialX} githubLabel={t.footer.socialGithub} />
+      </div>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .footer {
+    width: 100%;
+    margin-inline: auto;
+    background: var(--bg-page);
+    border-radius: var(--radius-32);
+    overflow: hidden;
+  }
+  .cta {
+    background: var(--field) url("/textures/cta-grid-mobile.svg") center / 100% 100% no-repeat;
+  }
+  .cta__content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-6) var(--space-6) var(--space-2);
+    text-align: center;
+  }
+  .cta__title {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    font-size: 22px;
+    line-height: 28px;
+    color: var(--on-field);
+  }
+  .wave {
+    height: 40px;
+    background-color: var(--bg-page);
+    -webkit-mask: url("/textures/wave-mobile.svg") bottom / 100% 90% no-repeat;
+    mask: url("/textures/wave-mobile.svg") bottom / 100% 90% no-repeat;
+  }
+
+  .body {
+    position: relative;
+    margin-top: -1px;
+    background: var(--bg-page);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-6);
+    padding: var(--space-6);
+  }
+  .brand {
+    display: contents;
+  }
+  .brand__lockup {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+  }
+  .lockup {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    color: var(--text-primary);
+  }
+  .lockup__word {
+    font-family: var(--font-sans);
+    font-weight: 500;
+    font-size: 40px;
+    line-height: 48px;
+  }
+  .character {
+    position: relative;
+    width: 66px;
+    height: 90px;
+    flex: none;
+  }
+  .character img {
+    position: absolute;
+    left: -16px;
+    top: -6px;
+    width: 120px;
+    max-width: none;
+    height: auto;
+  }
+  .brand__tagline {
+    text-align: center;
+    color: var(--text-secondary);
+  }
+  .columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-6) var(--space-4);
+    width: 100%;
+    text-align: center;
+  }
+  .col:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+  .col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .col__title {
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+  .col__list {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--text-secondary);
+  }
+  .col__list a:hover {
+    color: var(--text-primary);
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+  .rule {
+    width: 100%;
+    height: 1px;
+    margin: 0;
+    border: 0;
+    background: var(--border);
+  }
+  .bar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  .legal {
+    white-space: pre-wrap;
+    color: var(--text-secondary);
+  }
+
+  @media (min-width: 900px) {
+    .footer-wrap {
+      width: min(var(--content-max), 100% - 2 * var(--gutter));
+      margin-inline: auto;
+    }
+    .footer {
+      border-radius: var(--radius-40);
+    }
+    .cta {
+      background-image: url("/textures/cta-grid.svg");
+    }
+    .cta__content {
+      flex-direction: row;
+      justify-content: space-between;
+      gap: var(--space-8);
+      padding: 36px var(--space-16);
+      text-align: left;
+    }
+    .cta__title {
+      flex: 1;
+      font-size: 32px;
+      line-height: 40px;
+    }
+    .wave {
+      -webkit-mask-image: url("/textures/wave.svg");
+      mask-image: url("/textures/wave.svg");
+    }
+    .body {
+      align-items: stretch;
+      gap: var(--space-10);
+      padding: var(--space-8) var(--space-16) var(--space-10);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-8);
+    }
+    .character {
+      width: 88px;
+      height: 120px;
+    }
+    .brand__tagline {
+      width: 360px;
+      font-size: 16px;
+      line-height: 24px;
+      text-align: right;
+    }
+    .col:last-child:nth-child(odd) {
+      grid-column: auto;
+    }
+    .columns {
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--space-8);
+      text-align: left;
+    }
+    .col,
+    .col__list {
+      align-items: flex-start;
+    }
+    .col {
+      gap: var(--space-3);
+    }
+    .col__list {
+      gap: var(--space-3);
+    }
+    .bar {
+      flex-direction: row;
+      justify-content: space-between;
+    }
+  }
+</style>

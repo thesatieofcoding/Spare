@@ -1,0 +1,174 @@
+---
+import Button from "../Button.astro";
+import { docHref } from "../../lib/docs-nav";
+import TextLink from "../TextLink.astro";
+import { getMessages, type Lang } from "../../i18n/utils";
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const t = getMessages(lang).hero;
+---
+
+<section class="hero" aria-labelledby="hero-title">
+  <img class="hero__canopy" src="/illustrations/f-canopy.svg" alt="" aria-hidden="true" />
+  <img class="hero__arcs" src="/textures/arcs.svg" alt="" aria-hidden="true" />
+
+  <div class="container hero__grid">
+    <div class="hero__copy">
+      <div class="hero__intro">
+        <p class="eyebrow-row"><span class="eyebrow">{t.eyebrow}</span><span class="rule"></span></p>
+        <h1 id="hero-title" class="hero__title">{t.headlineLead}<em>{t.headlineAccent}</em></h1>
+      </div>
+      <p class="hero__lead">{t.subhead}</p>
+      <div class="hero__actions">
+        <Button href="#how-it-works">{t.primaryCta}</Button>
+        <TextLink href={docHref(lang, "quick-start")}>{t.secondaryCta}</TextLink>
+      </div>
+      <p class="hero__trust">{t.trust}</p>
+    </div>
+    <div class="hero__art">
+      <img src="/illustrations/e-picnic.svg" alt={t.illustrationAlt} width="640" height="658" fetchpriority="high" />
+    </div>
+  </div>
+</section>
+
+<style>
+  .hero {
+    position: relative;
+    padding-top: var(--space-6);
+    padding-bottom: var(--space-8);
+    isolation: isolate;
+  }
+  .hero__canopy,
+  .hero__arcs {
+    display: none;
+  }
+  .hero__grid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+  .hero__copy,
+  .hero__intro {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+  .eyebrow-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  .rule {
+    display: none;
+    width: 32px;
+    height: 1px;
+    background: var(--text-accent);
+  }
+  .hero__title {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    font-size: 48px;
+    line-height: 56px;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+  }
+  .hero__title em {
+    font-style: italic;
+    color: var(--text-accent);
+  }
+  .hero__lead {
+    font-size: 16px;
+    line-height: 24px;
+    color: var(--text-secondary);
+  }
+  .hero__actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+  .hero__trust {
+    white-space: pre-wrap;
+    color: var(--text-secondary);
+  }
+  .hero__art img {
+    width: 100%;
+    height: auto;
+  }
+
+  @media (min-width: 900px) {
+    .hero {
+      margin-top: -100px;
+      padding-top: 100px;
+      padding-bottom: 0;
+      min-height: 740px;
+    }
+    .hero__canopy {
+      display: block;
+      position: absolute;
+      z-index: -1;
+      top: 12px;
+      right: -16px;
+      width: min(560px, 39vw);
+      height: auto;
+      opacity: 0.22;
+      mix-blend-mode: multiply;
+      pointer-events: none;
+    }
+    .hero__arcs {
+      display: block;
+      position: absolute;
+      z-index: -1;
+      top: 129px;
+      left: calc(50% + 22px);
+      width: 664px;
+      max-width: none;
+      height: auto;
+      pointer-events: none;
+    }
+    .hero__grid {
+      display: grid;
+      width: calc(min(var(--content-max), 100% - 2 * var(--gutter)) + 24px);
+      margin-left: max(var(--gutter), calc((100% - var(--content-max)) / 2));
+      margin-right: 0;
+      grid-template-columns: minmax(0, 560px) minmax(0, 640px);
+      column-gap: var(--space-6);
+      align-items: start;
+    }
+    .hero__copy {
+      gap: var(--space-6);
+      margin-top: var(--space-20);
+      padding-top: var(--space-12);
+      padding-bottom: var(--space-20);
+    }
+    .hero__title {
+      font-size: clamp(56px, 5.56vw, 80px);
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+    }
+    .hero__lead {
+      font-size: 18px;
+      line-height: 28px;
+    }
+    .hero__actions {
+      flex-direction: row;
+      align-items: center;
+      gap: var(--space-6);
+    }
+    .rule {
+      display: block;
+    }
+    .hero__art {
+      position: relative;
+      z-index: 1;
+    }
+    .hero__art img {
+      margin-left: var(--space-10);
+      margin-top: 6px;
+      width: 100%;
+    }
+  }
+</style>

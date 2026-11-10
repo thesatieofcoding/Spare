@@ -1,0 +1,77 @@
+---
+import Glyph from "./Glyph.astro";
+
+interface Props {
+  /** Accessible name (the control is icon-only). */
+  label: string;
+}
+const { label } = Astro.props;
+---
+
+<!-- Addition not in Figma: sun/moon segmented pill, same rhythm as the EN/ES switcher (Language switcher 21:107). Generic stroke glyphs, 24px, 1.5 stroke like the Figma icon set. -->
+<button type="button" class="theme-toggle" role="switch" aria-checked="false" aria-label={label} data-theme-toggle>
+  <span class="theme-toggle__seg theme-toggle__seg--light"><Glyph src="/icons/sun.svg" size={20} /></span>
+  <span class="theme-toggle__seg theme-toggle__seg--dark"><Glyph src="/icons/moon.svg" size={20} /></span>
+</button>
+
+<style>
+  .theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-1);
+    background: var(--bg-page);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    color: var(--text-secondary);
+  }
+  .theme-toggle:hover {
+    color: var(--text-primary);
+  }
+  .theme-toggle__seg {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 28px;
+    border-radius: var(--radius-full);
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+  /* Active segment = current theme: sun when light, moon when dark. */
+  .theme-toggle[aria-checked="false"] .theme-toggle__seg--light,
+  .theme-toggle[aria-checked="true"] .theme-toggle__seg--dark {
+    background: var(--inverse);
+    color: var(--on-inverse);
+  }
+</style>
+
+<script>
+  import { initialTheme, saveTheme, toggleTheme, type ResolvedTheme } from "../lib/theme";
+
+  const storage = (() => {
+    try {
+      return window.localStorage;
+    } catch {
+      return undefined;
+    }
+  })();
+  const systemDark = () => window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const current = (): ResolvedTheme => {
+    const attr = document.documentElement.dataset.theme;
+    return attr === "light" || attr === "dark" ? attr : initialTheme(storage, systemDark());
+  };
+
+  const buttons = document.querySelectorAll<HTMLButtonElement>("[data-theme-toggle]");
+  const render = (theme: ResolvedTheme) => {
+    buttons.forEach((b) => b.setAttribute("aria-checked", String(theme === "dark")));
+  };
+  render(current());
+  buttons.forEach((b) =>
+    b.addEventListener("click", () => {
+      const next = toggleTheme(current());
+      document.documentElement.dataset.theme = next;
+      saveTheme(storage, next);
+      render(next);
+    }),
+  );
+</script>

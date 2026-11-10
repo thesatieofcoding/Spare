@@ -1,0 +1,11 @@
+---
+import DocsPage from "../../../components/DocsPage.astro";
+import { LANGS, type Lang } from "../../../i18n/utils";
+
+export function getStaticPaths() {
+  return LANGS.map((lang) => ({ params: { lang } }));
+}
+const lang = Astro.params.lang as Lang;
+---
+
+<DocsPage lang={lang} slug="introduction" />

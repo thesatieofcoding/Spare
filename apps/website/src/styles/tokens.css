@@ -1,0 +1,157 @@
+/*
+ * Spare design tokens. Source: Figma "SPARE - Design", variables
+ * `Spare / primitives` (raw values) and `Spare / color` (semantic, Light/Dark).
+ * Components must use the semantic vars, never primitives or raw hex.
+ */
+:root {
+  /* ---- Primitives (Spare / primitives) ---- */
+  --salvia-50: #f0f5ee;
+  --salvia-100: #e4ede1;
+  --salvia-200: #d5e2d0;
+  --salvia-300: #c6d8c0;
+  --salvia-400: #b7cdb0;
+  --salvia-500: #a9c7a6;
+  --salvia-600: #8bb089;
+  --salvia-700: #3e6650;
+  --salvia-800: #2c4b3c;
+  --salvia-900: #1a221d;
+
+  --cream-50: #ffffff;
+  --cream-75: #fbf7ee;
+  --cream-100: #f5f0e6;
+  --cream-200: #ebe6da;
+  --cream-300: #d9d4c8;
+  --cream-400: #c4bfb3;
+
+  --neutral-500: #6b6a62;
+  --neutral-600: #57554f;
+  --neutral-700: #41403a;
+  --neutral-800: #2c2b2b;
+  --neutral-900: #161614;
+
+  --forest-550: #24332a;
+  --forest-600: #2c3832;
+  --forest-700: #232d27;
+  --forest-800: #1a221d;
+
+  --error-300: #d8988b;
+  --error-500: #8f4a3a;
+
+  /* ---- Spacing (4px scale) ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+  --space-30: 120px;
+
+  /* ---- Radius ---- */
+  --radius-8: 8px;
+  --radius-16: 16px;
+  --radius-24: 24px;
+  --radius-32: 32px;
+  --radius-40: 40px;
+  --radius-full: 999px;
+
+  /* ---- Type ---- */
+  --font-serif: "Newsreader", Georgia, "Times New Roman", serif;
+  --font-sans: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* ---- Layout ---- */
+  --content-max: 1200px;
+  --gutter: 20px;
+
+  /* ---- Semantic: Light (Spare / color, mode Light) ---- */
+  color-scheme: light;
+  --bg-page: var(--cream-75);
+  --surface: var(--cream-50);
+  --field: var(--salvia-400);
+  --accent: var(--salvia-700);
+  --accent-hover: #486f5a; /* Figma color/bg/accent-hover */
+  --accent-pressed: var(--salvia-800);
+  --bg-subtle: var(--salvia-100);
+  --text-primary: var(--neutral-800);
+  --text-secondary: var(--neutral-500);
+  --text-accent: var(--salvia-700);
+  --on-accent: var(--cream-75);
+  --on-band: var(--cream-75);
+  --on-band-muted: var(--cream-400);
+  --band: var(--forest-550);
+  --on-field: var(--neutral-800);
+  --on-field-surface: var(--cream-75);
+  --border: var(--cream-300);
+  --divider: var(--neutral-800);
+  --inverse: var(--neutral-800);
+  --on-inverse: var(--cream-75);
+  --mark: var(--neutral-800);
+  --focus-ring: var(--salvia-700);
+}
+
+/* ---- Semantic: Dark. Applied for explicit data-theme="dark", or when the OS
+        prefers dark and the user has not forced light. ---- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg-page: var(--forest-800);
+    --surface: var(--forest-700);
+    --field: var(--salvia-500);
+    --accent: var(--salvia-500);
+    --accent-hover: var(--salvia-600);
+    --accent-pressed: color-mix(in srgb, var(--salvia-600) 80%, var(--neutral-800));
+    --bg-subtle: var(--forest-600);
+    --text-primary: var(--cream-75);
+    --text-secondary: var(--cream-400);
+    --text-accent: var(--salvia-500);
+    --on-accent: var(--neutral-800);
+    --on-band: var(--cream-75);
+    --on-band-muted: var(--cream-400);
+    --band: var(--forest-550);
+    --on-field: var(--neutral-800);
+    --on-field-surface: var(--cream-75);
+    --border: var(--forest-600);
+    --divider: var(--forest-600);
+    --inverse: var(--cream-75);
+    --on-inverse: var(--neutral-800);
+    --mark: var(--cream-100);
+    --focus-ring: var(--salvia-500);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg-page: var(--forest-800);
+  --surface: var(--forest-700);
+  --field: var(--salvia-500);
+  --accent: var(--salvia-500);
+  --accent-hover: var(--salvia-600);
+  --accent-pressed: color-mix(in srgb, var(--salvia-600) 80%, var(--neutral-800));
+  --bg-subtle: var(--forest-600);
+  --text-primary: var(--cream-75);
+  --text-secondary: var(--cream-400);
+  --text-accent: var(--salvia-500);
+  --on-accent: var(--neutral-800);
+  --on-band: var(--cream-75);
+  --on-band-muted: var(--cream-400);
+  --band: var(--forest-550);
+  --on-field: var(--neutral-800);
+  --on-field-surface: var(--cream-75);
+  --border: var(--forest-600);
+  --divider: var(--forest-600);
+  --inverse: var(--cream-75);
+  --on-inverse: var(--neutral-800);
+  --mark: var(--cream-100);
+  --focus-ring: var(--salvia-500);
+}
+
+@media (min-width: 900px) {
+  :root {
+    --gutter: 40px;
+  }
+}

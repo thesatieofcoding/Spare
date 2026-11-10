@@ -1,0 +1,50 @@
+---
+import { docHref, isDocSlug } from "../lib/docs-nav";
+import { parseInline } from "../lib/inline";
+import type { Lang } from "../i18n/utils";
+
+interface Props {
+  text: string;
+  lang: Lang;
+}
+const { text, lang } = Astro.props;
+const segs = parseInline(text).map((s) => {
+  if (s.t !== "link") return s;
+  if (s.href.startsWith("doc:")) {
+    const slug = s.href.slice(4);
+    return { ...s, href: isDocSlug(slug) ? docHref(lang, slug) : "#", external: false };
+  }
+  return { ...s, external: true };
+});
+---
+
+{
+  segs.map((s) =>
+    s.t === "code" ? (
+      <code class="ic">{s.text}</code>
+    ) : s.t === "link" ? (
+      <a href={s.href} class="il" target={"external" in s && s.external ? "_blank" : undefined} rel={"external" in s && s.external ? "noopener" : undefined}>
+        {s.text}
+      </a>
+    ) : (
+      s.text
+    ),
+  )
+}
+
+<style is:global>
+  .ic {
+    padding: 1px 6px;
+    border-radius: 6px;
+    background: var(--bg-subtle);
+    color: var(--text-primary);
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    font-size: 0.9em;
+    overflow-wrap: anywhere;
+  }
+  .il {
+    color: var(--text-accent);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+</style>

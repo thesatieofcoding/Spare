@@ -1,0 +1,79 @@
+---
+interface Props {
+  href: string;
+  variant?: "primary" | "secondary" | "inverse";
+  size?: "md" | "lg";
+  disabled?: boolean;
+  class?: string;
+}
+const { href, variant = "primary", size = "md", disabled = false, class: className } = Astro.props;
+---
+
+<a
+  href={disabled ? undefined : href}
+  aria-disabled={disabled ? "true" : undefined}
+  class:list={["btn", `btn--${variant}`, `btn--${size}`, className]}><slot /></a
+>
+
+<style>
+  /* Figma Button 21:67: 14/20 Medium, padding 12/20 (md) or 16/28 (lg), fully rounded, 44px tall. */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    border-radius: var(--radius-full);
+    font-family: var(--font-sans);
+    font-weight: 500;
+    font-size: 14px;
+    line-height: 20px;
+    white-space: nowrap;
+    transition: background-color 0.15s ease;
+  }
+  .btn--md {
+    padding: var(--space-3) var(--space-5);
+  }
+  .btn--lg {
+    padding: var(--space-4) 28px;
+    min-height: 52px;
+  }
+  .btn--primary {
+    background: var(--accent);
+    color: var(--on-accent);
+  }
+  .btn--primary:hover {
+    background: var(--accent-hover);
+  }
+  .btn--primary:active {
+    background: var(--accent-pressed);
+  }
+  .btn--secondary {
+    background: transparent;
+    color: var(--text-primary);
+  }
+  .btn--secondary:hover,
+  .btn--secondary:active {
+    background: var(--bg-subtle);
+  }
+  .btn--inverse {
+    background: var(--on-field-surface);
+    color: var(--on-field);
+  }
+  .btn--inverse:hover {
+    background: color-mix(in srgb, var(--on-field-surface) 90%, var(--on-field));
+  }
+  .btn--inverse:active {
+    background: color-mix(in srgb, var(--on-field-surface) 82%, var(--on-field));
+  }
+  .btn[aria-disabled="true"] {
+    pointer-events: none;
+    background: var(--bg-page);
+    color: var(--text-secondary);
+  }
+  .btn--secondary[aria-disabled="true"] {
+    background: transparent;
+  }
+  .btn:focus-visible {
+    outline-offset: 2px;
+  }
+</style>

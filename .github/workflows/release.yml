@@ -1,0 +1,58 @@
+name: release
+
+# Publishes packages to npm with provenance via npm trusted publishing (OIDC).
+# No npm token is stored in this repo: each package must have this workflow
+# registered as a trusted publisher on npmjs.com.
+#
+# Trigger: push a tag like v0.1.1 after bumping package versions.
+# Only packages whose current version is not yet on npm are published.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # required for OIDC trusted publishing + provenance
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: npm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      # Trusted publishing needs npm >= 11.5.1
+      - run: npm install -g npm@^11.5.1
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r --filter "./packages/*" typecheck
+      - run: pnpm -r --filter "./packages/*" test
+      - name: Publish (spare-sdk first, then spare-wallets-kit)
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/pkgs"
+          for pkg in spare-sdk spare-wallets-kit; do
+            dir="packages/$pkg"
+            name=$(jq -r .name "$dir/package.json")
+            version=$(jq -r .version "$dir/package.json")
+            if npm view "$name@$version" version >/dev/null 2>&1; then
+              echo "::notice::$name@$version already on npm, skipping"
+              continue
+            fi
+            pnpm -C "$dir" run build
+            # pnpm pack rewrites workspace:^ to the real version range
+            pnpm -C "$dir" pack --pack-destination "$RUNNER_TEMP/pkgs"
+            tarball="$RUNNER_TEMP/pkgs/${name}-${version}.tgz"
+            npm publish "$tarball" --provenance --access public
+            echo "::notice::published $name@$version"
+          done

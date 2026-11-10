@@ -1,0 +1,42 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import TextLink from "../../components/TextLink.astro";
+import { LANGS, getMessages, localizePath, type Lang } from "../../i18n/utils";
+
+type PageKey = "foundations" | "dashboard" | "demo";
+
+export function getStaticPaths() {
+  const pages: PageKey[] = ["foundations", "dashboard", "demo"];
+  return LANGS.flatMap((lang) => pages.map((page) => ({ params: { lang, page } })));
+}
+
+const lang = Astro.params.lang as Lang;
+const page = Astro.params.page as PageKey;
+const t = getMessages(lang);
+const name = t.pages[page];
+---
+
+<BaseLayout lang={lang} title={`${name} — Spare`}>
+  <section class="soon container">
+    <p class="eyebrow">{name}</p>
+    <h1 class="h2">{t.comingSoon.title}</h1>
+    <p class="lead">{t.comingSoon.body}</p>
+    <TextLink href={localizePath(lang, "")}>{t.comingSoon.back}</TextLink>
+  </section>
+</BaseLayout>
+
+<style>
+  .soon {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
+    padding-block: var(--space-20) var(--space-24);
+    min-height: 50vh;
+  }
+  .lead {
+    color: var(--text-secondary);
+    font-size: 16px;
+    line-height: 24px;
+  }
+</style>

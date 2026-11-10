@@ -1,0 +1,48 @@
+---
+import Glyph from "./Glyph.astro";
+
+interface Props {
+  xLabel: string;
+  githubLabel: string;
+}
+const { xLabel, githubLabel } = Astro.props;
+const items = [
+  { href: "https://x.com/sparexlm", label: xLabel, icon: "/icons/x.svg" },
+  { href: "https://github.com/thesatieofcoding/Spare", label: githubLabel, icon: "/icons/github.svg" },
+];
+---
+
+<ul class="social">
+  {
+    items.map((i) => (
+      <li>
+        <a class="social__btn" href={i.href} aria-label={i.label} target="_blank" rel="noopener">
+          <Glyph src={i.icon} size={20} />
+        </a>
+      </li>
+    ))
+  }
+</ul>
+
+<style>
+  .social {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+  /* 44x44 hit area around the 20px brand glyph (Figma Brand=X / Brand=GitHub). */
+  .social__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-full);
+    color: var(--text-primary);
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+  .social__btn:hover {
+    background: var(--bg-subtle);
+    color: var(--text-accent);
+  }
+</style>
