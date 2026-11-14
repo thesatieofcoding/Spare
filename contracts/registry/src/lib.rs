@@ -16,10 +16,9 @@ pub const MAX_WEBSITE_BYTES: u32 = 253;
 
 /// Ledgers per day at ~5s per ledger.
 const DAY_IN_LEDGERS: u32 = 17_280;
-/// If the entry's remaining TTL is below this, `register`/`update` bump it.
-pub const TTL_THRESHOLD: u32 = 30 * DAY_IN_LEDGERS;
-/// TTL (in ledgers) the entry is extended to: ~60 days.
-pub const TTL_EXTEND_TO: u32 = 60 * DAY_IN_LEDGERS;
+/// Refresh window: `register`/`update` bump the TTL once less than
+/// `max_ttl - REFRESH_WINDOW` remains, i.e. about 30 days after the last bump.
+const REFRESH_WINDOW: u32 = 30 * DAY_IN_LEDGERS;
 
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
@@ -120,10 +119,14 @@ fn save(env: &Env, account: &Address, f: &Foundation) {
 }
 
 fn extend(env: &Env, account: &Address) {
+    // Extend to the network maximum, read at call time: the contract is
+    // immutable, so no hard-coded value can exceed a future `max_entry_ttl`.
+    let extend_to = env.storage().max_ttl();
+    let threshold = extend_to.saturating_sub(REFRESH_WINDOW);
     env.storage().persistent().extend_ttl(
         &DataKey::Foundation(account.clone()),
-        TTL_THRESHOLD,
-        TTL_EXTEND_TO,
+        threshold,
+        extend_to,
     );
 }
 

@@ -6,10 +6,25 @@ use soroban_sdk::{
     vec, Address, Env, IntoVal, String, Symbol, Val, Vec,
 };
 
-use crate::{Error, Foundation, Registry, RegistryClient, TTL_EXTEND_TO, TTL_THRESHOLD};
+use crate::{Error, Foundation, Registry, RegistryClient};
+
+// Explicit network parameters (mainnet, verified 2026-11-14); never rely on testutils defaults.
+const MIN_PERSISTENT_TTL: u32 = 2_073_600;
+const MAX_ENTRY_TTL: u32 = 3_110_400;
+const MIN_TEMP_TTL: u32 = 17_280;
+/// `Storage::max_ttl()` = max_entry_ttl - 1 under the explicit LedgerInfo.
+const EXTEND_TO: u32 = MAX_ENTRY_TTL - 1;
+const THRESHOLD: u32 = EXTEND_TO - 30 * 17_280;
 
 fn setup() -> (Env, RegistryClient<'static>, Address) {
+    use soroban_sdk::testutils::Ledger as _;
     let env = Env::default();
+    env.ledger().with_mut(|l| {
+        l.sequence_number = 1_000;
+        l.min_persistent_entry_ttl = MIN_PERSISTENT_TTL;
+        l.max_entry_ttl = MAX_ENTRY_TTL;
+        l.min_temp_entry_ttl = MIN_TEMP_TTL;
+    });
     let id = env.register(Registry, ());
     let client = RegistryClient::new(&env, &id);
     (env, client, id)
@@ -93,13 +108,13 @@ fn register_on_deactivated_reactivates_with_new_values() {
     c.register(&a, &s(&env, "Uno"), &s(&env, "uno.org"));
     c.deactivate(&a);
     // let TTL decay so we can see it re-extended
-    env.ledger().with_mut(|l| l.sequence_number += TTL_EXTEND_TO - TTL_THRESHOLD + 10);
-    assert!(ttl_of(&env, &id, &a) < TTL_THRESHOLD);
+    env.ledger().with_mut(|l| l.sequence_number += EXTEND_TO - THRESHOLD + 10);
+    assert!(ttl_of(&env, &id, &a) < THRESHOLD);
     c.register(&a, &s(&env, "Nuevo"), &s(&env, "nuevo.org"));
     assert_eq!(env.events().all(), expected(&env, &id, "register", &a, "Nuevo", "nuevo.org"));
     assert_eq!(c.get(&a), Some(foundation(&env, "Nuevo", "nuevo.org", true)));
     assert!(c.is_active(&a));
-    assert_eq!(ttl_of(&env, &id, &a), TTL_EXTEND_TO);
+    assert_eq!(ttl_of(&env, &id, &a), EXTEND_TO);
 }
 
 #[test]
@@ -453,12 +468,24 @@ fn owner_auth_allows_update_and_deactivate() {
 // ---------- TTL ----------
 
 #[test]
-fn register_extends_ttl() {
+fn ttl_api_max_ttl_follows_ledger_info() {
+    use soroban_sdk::testutils::Ledger as _;
+    let (env, _, id) = setup();
+    let max_ttl = |env: &Env| env.as_contract(&id, || env.storage().max_ttl());
+    assert_eq!(max_ttl(&env), EXTEND_TO);
+    env.ledger().with_mut(|l| l.max_entry_ttl = 1_000_000);
+    assert_eq!(max_ttl(&env), 1_000_000 - 1);
+}
+
+#[test]
+fn register_extends_ttl_to_max_and_above_network_min() {
     let (env, c, id) = setup();
     env.mock_all_auths();
     let a = Address::generate(&env);
     c.register(&a, &s(&env, "Uno"), &s(&env, "uno.org"));
-    assert_eq!(ttl_of(&env, &id, &a), TTL_EXTEND_TO);
+    let ttl = ttl_of(&env, &id, &a);
+    assert_eq!(ttl, EXTEND_TO);
+    assert!(ttl >= MIN_PERSISTENT_TTL);
 }
 
 #[test]
@@ -469,11 +496,40 @@ fn update_re_extends_ttl_after_decay() {
     let a = Address::generate(&env);
     c.register(&a, &s(&env, "Uno"), &s(&env, "uno.org"));
     // advance until remaining TTL is below the threshold
-    let advance = TTL_EXTEND_TO - TTL_THRESHOLD + 10;
-    env.ledger().with_mut(|l| l.sequence_number += advance);
-    assert!(ttl_of(&env, &id, &a) < TTL_THRESHOLD);
+    env.ledger().with_mut(|l| l.sequence_number += EXTEND_TO - THRESHOLD + 10);
+    assert!(ttl_of(&env, &id, &a) < THRESHOLD);
     c.update(&a, &s(&env, "Uno 2"), &s(&env, "uno2.org"));
-    assert_eq!(ttl_of(&env, &id, &a), TTL_EXTEND_TO);
+    assert_eq!(ttl_of(&env, &id, &a), EXTEND_TO);
+}
+
+#[test]
+fn update_above_threshold_does_not_reduce_ttl() {
+    use soroban_sdk::testutils::Ledger as _;
+    let (env, c, id) = setup();
+    env.mock_all_auths();
+    let a = Address::generate(&env);
+    c.register(&a, &s(&env, "Uno"), &s(&env, "uno.org"));
+    env.ledger().with_mut(|l| l.sequence_number += 10);
+    let before = ttl_of(&env, &id, &a);
+    assert!(before > THRESHOLD);
+    c.update(&a, &s(&env, "Uno 2"), &s(&env, "uno2.org"));
+    assert_eq!(ttl_of(&env, &id, &a), before);
+}
+
+#[test]
+fn register_does_not_trap_when_network_max_ttl_shrinks() {
+    use soroban_sdk::testutils::Ledger as _;
+    let (env, c, id) = setup();
+    env.mock_all_auths();
+    env.ledger().with_mut(|l| {
+        l.max_entry_ttl = 2_700_000;
+        l.min_persistent_entry_ttl = 2_073_600;
+    });
+    let a = Address::generate(&env);
+    c.register(&a, &s(&env, "Uno"), &s(&env, "uno.org"));
+    let ttl = ttl_of(&env, &id, &a);
+    assert_eq!(ttl, 2_700_000 - 1);
+    assert!(ttl >= MIN_PERSISTENT_TTL);
 }
 
 // ---------- events ----------
