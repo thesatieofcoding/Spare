@@ -44,8 +44,8 @@ export interface DonationInfo {
   amount: string;
   amountStroops: bigint;
   foundation: string;
-  /** What the donor spends: USDC directly, or XLM through a strict-receive path payment. */
-  payWith: PayWith;
+  /** What the donor spends: USDC directly, or XLM through a strict-receive path payment. Absent means "usdc". */
+  payWith?: PayWith;
   /**
    * XLM only: the most XLM the donor can spend (quote + slippage margin), and the quote it came
    * from. The foundation still receives exactly `amount` USDC; any unused margin stays with the donor.

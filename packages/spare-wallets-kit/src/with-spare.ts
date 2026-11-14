@@ -77,7 +77,7 @@ const toCheck = (e: Evaluation): ChoiceCheck => {
   return {
     status: "offered",
     amount: d.amount,
-    payWith: d.payWith,
+    payWith: d.payWith ?? "usdc",
     ...(d.sendMax !== undefined && { xlmSendMax: d.sendMax }),
     ...(d.purchase !== undefined && { purchaseTotal: d.purchase }),
     ...(d.roundedTotal !== undefined && { roundUpTotal: d.roundedTotal }),
@@ -109,7 +109,7 @@ export function withSpare(kit: SignerLike, options: SpareOptions): SpareSigner {
     const wallet: WalletKind = isLedger(id) ? "ledger" : secondSignature ? "soroban" : "classic";
     return {
       amount: donation.amount,
-      payWith: donation.payWith,
+      payWith: donation.payWith ?? "usdc",
       ...(donation.sendMax !== undefined && { xlmSendMax: donation.sendMax }),
       foundationName: options.foundationName ?? options.foundation.domain,
       foundationDomain: options.foundation.domain,

@@ -51,7 +51,13 @@ export async function checkEligibility(i: EligibilityInput): Promise<NotOfferedR
   if (foundation.usdc.headroom < i.amount) return "foundation-trustline-full";
 
   if (i.priceXlm) {
-    // XLM path: no USDC trustline needed. XLM above the minimum reserve (xlmAvailable already
+    // A USDC purchase in the same tx still has to be covered by the user's own USDC.
+    if (i.usdcSpend > 0n) {
+      if (!i.user.usdc) return "user-trustline-missing";
+      if (!i.user.usdc.authorized) return "user-trustline-unauthorized";
+      if (i.user.usdc.balance < i.usdcSpend) return "insufficient-balance";
+    }
+    // XLM path: the donation itself needs no USDC trustline. XLM above the minimum reserve (xlmAvailable already
     // nets reserve and selling liabilities) must cover the purchase, the sendMax and the fee.
     const sendMax = await i.priceXlm();
     if (sendMax === null) return "no-path";

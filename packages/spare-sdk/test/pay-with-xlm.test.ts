@@ -112,6 +112,23 @@ describe("addDonation paying with XLM (path payment)", () => {
     }
   });
 
+  it("a USDC purchase paid next to an XLM donation still needs the user's USDC to cover it", async () => {
+    const tx = () => buildTx({ ops: [payUsdc("4.20")] });
+    expect(await addDonation(tx(), base({ accounts: noUsdcUser() }))).toMatchObject({ reason: "user-trustline-missing" });
+    const unauth = world().set(user.publicKey(), snapshot({ usdc: line(stroops("100"), false) }));
+    expect(await addDonation(tx(), base({ accounts: unauth }))).toMatchObject({ reason: "user-trustline-unauthorized" });
+    const short = world().set(user.publicKey(), snapshot({ usdc: line(stroops("4.19")) }));
+    expect(await addDonation(tx(), base({ accounts: short }))).toMatchObject({ reason: "insufficient-balance" });
+    // exactly the purchase is enough: the donation itself is paid in XLM
+    const exact = world().set(user.publicKey(), snapshot({ usdc: line(stroops("4.20")) }));
+    expect(await addDonation(tx(), base({ accounts: exact }))).toMatchObject({ status: "offered" });
+  });
+
+  it("rejects a quoted path that loops back through XLM", async () => {
+    const native: PathQuotePort = { quoteXlmForUsdc: async () => ({ sendAmount: 1n, path: [Asset.native()] }) };
+    expect(await addDonation(buildTx(), base({ quotes: native }))).toMatchObject({ reason: "no-path" });
+  });
+
   it("still requires the foundation's authorized Circle-USDC trustline", async () => {
     const accounts = noUsdcUser().set(foundationKp.publicKey(), snapshot({ usdc: null }));
     expect(await addDonation(buildTx({ ops: [payXlm("1")] }), base({ accounts }))).toMatchObject({ reason: "foundation-trustline-missing" });

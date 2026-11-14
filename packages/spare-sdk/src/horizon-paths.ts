@@ -4,14 +4,13 @@ import { MAX_PATH_LENGTH, USDC_CODE } from "./constants.js";
 import { isNetwork, NETWORKS, type Network } from "./network.js";
 import type { FetchLike, PathQuotePort, XlmQuote } from "./ports.js";
 
-export interface HorizonPathQuotePortOptions {
-  /** Default "mainnet". Picks the Horizon URL unless `horizon` is set. */
-  network?: Network;
-  /** Horizon base URL; overrides the network's default. */
-  horizon?: string;
-  /** Defaults to global fetch. */
-  fetch?: FetchLike;
-}
+/**
+ * Without `horizon`, `network` (default "mainnet") picks the Horizon URL. A custom `horizon` URL
+ * must name its `network`, so the port never claims mainnet for a testnet server.
+ */
+export type HorizonPathQuotePortOptions =
+  | { network?: Network; horizon?: undefined; fetch?: FetchLike }
+  | { network: Network; horizon: string; fetch?: FetchLike };
 
 interface PathRecord {
   source_asset_type?: string;
@@ -39,6 +38,9 @@ export class HorizonPathQuotePort implements PathQuotePort {
   private readonly fetch: FetchLike;
 
   constructor(o: HorizonPathQuotePortOptions = {}) {
+    if (o.horizon !== undefined && o.network === undefined) {
+      throw new Error("HorizonPathQuotePort: a custom horizon URL needs an explicit network");
+    }
     const network = o.network ?? "mainnet";
     if (!isNetwork(network)) throw new Error(`unknown network: ${String(network)}`);
     this.network = network;

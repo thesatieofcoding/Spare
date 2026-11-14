@@ -38,7 +38,7 @@ describe("HorizonPathQuotePort", () => {
     await new HorizonPathQuotePort({ network: "testnet", fetch }).quoteXlmForUsdc(1n, "GX");
     expect(String((fetch as ReturnType<typeof vi.fn>).mock.calls[0]?.[0])).toMatch(/^https:\/\/horizon-testnet\.stellar\.org\/paths/);
     const f2 = reply([rec("1")]);
-    await new HorizonPathQuotePort({ horizon: "https://h.example/", fetch: f2 }).quoteXlmForUsdc(1n, "GX");
+    await new HorizonPathQuotePort({ network: "testnet", horizon: "https://h.example/", fetch: f2 }).quoteXlmForUsdc(1n, "GX");
     expect(String((f2 as ReturnType<typeof vi.fn>).mock.calls[0]?.[0])).toMatch(/^https:\/\/h\.example\/paths\/strict-receive\?/);
   });
 
@@ -54,6 +54,10 @@ describe("HorizonPathQuotePort", () => {
 
   it("throws on HTTP errors (the SDK maps that to no-path)", async () => {
     await expect(new HorizonPathQuotePort({ fetch: reply([], 503) }).quoteXlmForUsdc(1n, USDC_ISSUER)).rejects.toThrow();
+  });
+
+  it("a custom Horizon URL needs an explicit network (no silent mainnet default)", () => {
+    expect(() => new HorizonPathQuotePort({ horizon: "https://h.example" } as never)).toThrow(/network/);
   });
 
   it("rejects unknown networks", () => {
