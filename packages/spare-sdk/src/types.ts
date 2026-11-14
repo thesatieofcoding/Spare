@@ -1,6 +1,6 @@
 import type { FeeBumpTransaction, Transaction } from "@stellar/stellar-sdk";
 import type { Network } from "./network.js";
-import type { AccountPort, FetchLike, Foundation } from "./ports.js";
+import type { AccountPort, FetchLike, Foundation, PathQuotePort } from "./ports.js";
 
 /** The tx is left untouched: Spare cannot safely modify it. */
 export type PassthroughReason =
@@ -32,13 +32,28 @@ export type NotOfferedReason =
   | "insufficient-balance"
   | "account-lookup-failed"
   | "main-tx-not-successful"
-  | "account-not-synced";
+  | "account-not-synced"
+  /** Paying in XLM: no XLM -> USDC path right now, or the quote failed. */
+  | "no-path";
+
+/** Asset the donor spends. The foundation always receives Circle USDC. */
+export type PayWith = "usdc" | "xlm";
 
 export interface DonationInfo {
   /** Amount in USDC, 7 decimals. Show this to the user before signing. */
   amount: string;
   amountStroops: bigint;
   foundation: string;
+  /** What the donor spends: USDC directly, or XLM through a strict-receive path payment. Absent means "usdc". */
+  payWith?: PayWith;
+  /**
+   * XLM only: the most XLM the donor can spend (quote + slippage margin), and the quote it came
+   * from. The foundation still receives exactly `amount` USDC; any unused margin stays with the donor.
+   */
+  sendMax?: string;
+  sendMaxStroops?: bigint;
+  quotedXlm?: string;
+  quotedXlmStroops?: bigint;
   /** False when the tx already had a memo, so the donation cannot be tagged for the app. */
   attributed: boolean;
   /**
@@ -76,4 +91,19 @@ export interface CommonOptions {
    * Anything malformed yields `not-offered` / `invalid-options`.
    */
   baseFee?: string;
+  /**
+   * What the donor pays with. Default "usdc" (a plain USDC payment). "xlm" uses
+   * pathPaymentStrictReceive: the foundation receives exactly the USDC amount, the donor spends at
+   * most the quoted XLM plus `slippageBps`. Needs `quotes`; the donor needs no USDC trustline.
+   */
+  payWith?: PayWith;
+  /** Required with `payWith: "xlm"`. */
+  quotes?: PathQuotePort;
+  /** Margin over the XLM quote, in basis points (integer 0-1000). Default 200 (2%). */
+  slippageBps?: number;
+  /**
+   * XLM only: use exactly this sendMax (XLM, up to 7 decimals) instead of quote + `slippageBps`,
+   * e.g. the cap a donor already approved. Not offered (`no-path`) when the live quote exceeds it.
+   */
+  sendMax?: string;
 }

@@ -46,6 +46,32 @@ Only when the whole tx is a Circle-USDC purchase (payments, `pathPaymentStrictSe
 - Already whole (e.g. 5.00): `round-up-already-whole`.
 - `pathPaymentStrictReceive`, XLM or other-asset ops, or unmodelled ops in the same tx: `round-up-needs-usdc-purchase` (the real spend is unknown up front, so Spare never rounds `sendMax`).
 
+### Paying the donation in XLM
+
+Pass `payWith: "xlm"` and a `quotes` port so a donor who holds XLM can pay. The donation op becomes `pathPaymentStrictReceive` (send XLM, receive Circle USDC): the foundation receives exactly `amount` in Circle USDC, with the same foundation checks as always, and the donor spends at most the quoted XLM plus `slippageBps` (default 200 = 2%, integer 0-1000) as `sendMax`. Unused XLM stays with the donor. The donor needs no USDC trustline: XLM above the minimum reserve (`(2 + subentries + sponsoring - sponsored) x 0.5 XLM` plus selling liabilities) must cover `sendMax`, the fee and any XLM the tx already sends. Works for `addDonation` and `donateAfter`; USDC stays the default.
+
+```ts
+import { addDonation, HorizonAccountPort, HorizonPathQuotePort } from "spare-sdk";
+
+const result = await addDonation(unsignedTx, {
+  foundation, amount: "0.25", appId: "my-app", maxAmount: "5",
+  accounts: new HorizonAccountPort({ network }), network,
+  payWith: "xlm",
+  quotes: new HorizonPathQuotePort({ network }), // Horizon /paths/strict-receive, source_assets=native
+});
+// offered: result.donation.payWith === "xlm"; show "≈ result.donation.sendMax XLM max"
+```
+
+`sendMax` (optional, XLM) replaces quote + `slippageBps` with an exact cap, for example one the donor already approved; the donation is then offered only if the live quote fits under it (else `no-path`).
+
+`HorizonPathQuotePort` keeps the cheapest path of at most 5 hops (stellar-core's limit). No path or a failed quote gives `not-offered` / `no-path`. `DonationInfo` adds `payWith` and, for XLM, `sendMax` / `sendMaxStroops` and `quotedXlm` / `quotedXlmStroops`. Your own `PathQuotePort` only needs `quoteXlmForUsdc(usdcStroops, usdcIssuer)` returning `{ sendAmount, path } | null`.
+
+**Price risk.** In `addDonation` the XLM-paid donation is an operation in the same transaction as the purchase. If the XLM price moves past `sendMax` before the transaction applies, the path payment fails (`PATH_PAYMENT_STRICT_RECEIVE_OVER_SENDMAX`) and so does the whole transaction, purchase included; nothing moves and only the fee is spent. Quote right before signing (`withSpare` re-quotes at confirm) and keep the transaction's timebound short. A purchase paid in USDC next to an XLM-paid donation still needs the donor's authorized USDC trustline and balance for the purchase.
+
+Known limitations: a donor with their own open offers on the XLM/USDC book can hit `PATH_PAYMENT_STRICT_RECEIVE_OFFER_CROSS_SELF`; Spare does not check the donor's offers. The quote is the cheapest path at that moment, not a guarantee of liquidity when the transaction applies. `HorizonPathQuotePort` needs an explicit `network` when you pass a custom `horizon` URL. The XLM balance check uses the reserve of the account as it is now: subentries your own transaction adds (`changeTrust`, `manageData`, offers) raise the reserve without being counted, so such a transaction plus an XLM-paid donation can still fail with `op_underfunded`.
+
+Indexing: the payment shows up in Horizon `/accounts/{foundation}/payments` as `path_payment_strict_receive` (`amount` = USDC received), and in RPC unified events (CAP-67) as a USDC `transfer` from the donor to the foundation, so attribution by the `spare:<appId>` memo is unchanged.
+
 ### Networks
 
 `network` is `"mainnet"` (default) or `"testnet"` and selects the only accepted Circle USDC issuer:
@@ -59,7 +85,7 @@ A tx built for the other network is `not-offered` with `network-mismatch`. Pass 
 
 `passthrough` (tx untouched): `fee-bump`, `already-signed`, `soroban`, `multiple-sources`, `multisig` (the master key alone cannot meet the tx's threshold: medium, or high with `setOptions`/`accountMerge`), `extra-signers` (CAP-21 `extraSigners` precondition).
 
-`not-offered`: `invalid-options` (incl. malformed `baseFee`), `invalid-app-id`, `invalid-amount`, `invalid-foundation`, `amount-over-cap`, `round-up-needs-usdc-purchase`, `round-up-already-whole`, `foundation-not-verified`, `foundation-trustline-missing`, `foundation-trustline-unauthorized`, `foundation-trustline-full` (no room under the trustline limit), `user-trustline-missing`, `user-trustline-unauthorized`, `unsupported-operation` (the tx has ops that can spend funds in ways Spare does not model, e.g. `manageBuyOffer`, `createClaimableBalance`, `liquidityPoolDeposit`, `accountMerge`), `insufficient-balance` (USDC, or XLM for the fee plus any XLM the tx sends), `network-mismatch` (the tx passphrase is not the one of `network`), `account-lookup-failed`, `main-tx-not-successful`, `account-not-synced` (`donateAfter` only: Horizon did not catch up with the main tx in time), and, from `donateAfter` only, `multisig`.
+`not-offered`: `invalid-options` (incl. malformed `baseFee`, unknown `payWith`, missing `quotes`, bad `slippageBps`), `no-path` (paying in XLM: no path or the quote failed), `invalid-app-id`, `invalid-amount`, `invalid-foundation`, `amount-over-cap`, `round-up-needs-usdc-purchase`, `round-up-already-whole`, `foundation-not-verified`, `foundation-trustline-missing`, `foundation-trustline-unauthorized`, `foundation-trustline-full` (no room under the trustline limit), `user-trustline-missing`, `user-trustline-unauthorized`, `unsupported-operation` (the tx has ops that can spend funds in ways Spare does not model, e.g. `manageBuyOffer`, `createClaimableBalance`, `liquidityPoolDeposit`, `accountMerge`), `insufficient-balance` (USDC, or XLM for the fee plus any XLM the tx sends; paying in XLM, also `sendMax`), `network-mismatch` (the tx passphrase is not the one of `network`), `account-lookup-failed`, `main-tx-not-successful`, `account-not-synced` (`donateAfter` only: Horizon did not catch up with the main tx in time), and, from `donateAfter` only, `multisig`.
 
 ### Memo and SEP-29
 

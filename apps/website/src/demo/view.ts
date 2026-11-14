@@ -7,6 +7,7 @@ import type { DemoCopy } from "../i18n/types";
 import type { DemoNetwork } from "./config";
 import type { Availability } from "./controller";
 import type { DemoState, FlowResult } from "./machine";
+import type { PurchaseAsset } from "./ports";
 
 export interface ViewContext {
   copy: DemoCopy;
@@ -14,6 +15,7 @@ export interface ViewContext {
   /** null until ports are loaded; false disables the Soroban flow. */
   rpcAvailable: boolean | null;
   purchaseAmount: string;
+  purchaseAsset: PurchaseAsset;
 }
 
 export interface View {
@@ -22,6 +24,9 @@ export interface View {
   tone: "neutral" | "success" | "error";
   busy: boolean;
   purchase: string;
+  purchaseAsset: PurchaseAsset;
+  /** The purchase asset can change only when no flow is running. */
+  canSwitchPurchase: boolean;
   notConfigured: string | null;
   connected: string | null;
   sorobanNote: string | null;
@@ -95,7 +100,9 @@ export function buildView(state: DemoState, ctx: ViewContext): View {
     status,
     tone,
     busy: phase || state.status === "connecting",
-    purchase: fill(copy.purchase, { amount: ctx.purchaseAmount }),
+    purchase: fill(copy.purchase, { amount: ctx.purchaseAmount, asset: ctx.purchaseAsset.toUpperCase() }),
+    purchaseAsset: ctx.purchaseAsset,
+    canSwitchPurchase: !phase,
     notConfigured: ctx.availability.enabled ? null : copy.notConfigured,
     connected: address === undefined ? null : fill(copy.connectedAs, { address: truncate(address) }),
     sorobanNote: ready && rpcOff ? copy.rpcUnavailable : null,

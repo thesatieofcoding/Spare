@@ -5,6 +5,47 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-11-14
+
+### Added
+
+- `spare-sdk`: pay the donation in XLM. `payWith: "xlm"` with a `quotes` port (`PathQuotePort`) builds a
+  `pathPaymentStrictReceive` (send XLM, receive exactly the amount in Circle USDC) instead of a USDC payment, for
+  both `addDonation` and `donateAfter`. `sendMax` = quote + `slippageBps` (default 200 = 2%, integer 0-1000, rounded
+  up). The donor needs no USDC trustline; XLM above the minimum reserve must cover `sendMax`, the fee and any XLM the
+  tx sends. The foundation checks are unchanged (authorized Circle-USDC trustline, domain-verified). New reason
+  `no-path` (no path, failed quote, or a path longer than 5 hops). `HorizonPathQuotePort` quotes through Horizon
+  `/paths/strict-receive` with `source_assets=native`. `DonationInfo` gains `payWith` and, for XLM, `sendMax(Stroops)`
+  and `quotedXlm(Stroops)`. Exports `xlmSendMax`, `DEFAULT_SLIPPAGE_BPS`, `MAX_SLIPPAGE_BPS`, `PayWith`.
+- `spare-wallets-kit`: the donor chooses the amount and pay asset. Presets (`presets`, default US$0.10 / 0.25 / 0.50,
+  smallest preselected), an "other amount" field (US$0.01 up to `maxAmount`), round-up only for USDC purchases, and an
+  XLM/USDC toggle with "≈ N XLM max" when `quotes` is set (`payWith` picks the preselected asset). Each change is
+  re-checked; ineligible options are disabled. Custom `confirm` functions get `prompt.choices`
+  (`check` / `select`). EN + ES strings.
+- Demo: the purchase defaults to XLM (USDC selectable), the donation defaults to XLM, and the Soroban flow transfers
+  through the native XLM Stellar Asset Contract, so a wallet holding only XLM can run both flows on testnet.
+- Testnet E2E: XLM-paid classic and Soroban donations from an account with no USDC trustline, custom amounts, and a
+  check that the path payment is listed in Horizon `/accounts/{foundation}/payments`.
+
+### Changed (behavior / migration)
+
+1. `spare-wallets-kit`: the amount/asset picker is opt-in for existing integrations. It is on when `presets` is
+   set or `mode` is omitted (default: the smallest preset). An explicit `mode` without `presets` keeps the 0.1.3
+   single-amount yes/no prompt (no `choices`, no "other amount" field).
+2. `DonationInfo.payWith` is a new optional field (absent means `"usdc"`).
+3. Paying in XLM, `withSpare` re-quotes live when the donor says yes and rebuilds the tx with exactly the `sendMax`
+   the donor approved as the cap. It signs only if the fresh raw quote fits under that cap and the donation is
+   otherwise identical; otherwise the original is signed with `outcome: "not-offered"`, `reason: "quote-changed"`
+   (`offerFollowUp`: `skipped` / `quote-changed`). No new outcome value. XLM quotes are never cached; accounts and
+   `stellar.toml` are read once per prompt. `spare-sdk` gains the optional `sendMax` cap used for this.
+4. An XLM-paid donation next to a USDC purchase still requires the donor's authorized USDC trustline and balance
+   for the purchase. The donation shares the transaction with the purchase: a price move past `sendMax` fails both
+   (only the fee is spent).
+5. `HorizonPathQuotePort` throws when given a custom `horizon` URL without `network`.
+6. The modal accepts a decimal comma in Spanish only.
+7. Known limitation: the XLM balance check uses the account's current reserve and does not count subentries the
+   app's own tx adds (`changeTrust`, `manageData`, offers), so such a tx can still fail with `op_underfunded`.
+
 ## [0.1.3] - 2026-11-14
 
 ### Added

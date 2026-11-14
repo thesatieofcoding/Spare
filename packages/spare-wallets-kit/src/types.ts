@@ -1,4 +1,6 @@
-import type { AccountPort, DonationInfo, FetchLike, Foundation, Network } from "spare-sdk";
+import type { AccountPort, DonationInfo, FetchLike, Foundation, Network, PathQuotePort, PayWith } from "spare-sdk";
+
+export type { PayWith };
 
 export type Locale = "en" | "es";
 export type Theme = "light" | "dark" | "auto";
@@ -26,10 +28,56 @@ export interface SignerLike {
   readonly selectedModule?: { readonly productId?: string };
 }
 
+/** What the donor picked in the confirmation step: an amount in USD (or round-up) and a pay asset. */
+export type DonationChoice =
+  | { amount: string; roundUp?: never; payWith: PayWith }
+  | { roundUp: true; amount?: never; payWith: PayWith };
+
+/** Result of evaluating a choice: the same checks the SDK runs before offering anything. */
+export type ChoiceCheck =
+  | {
+      status: "offered";
+      /** USD amount the foundation receives, in USDC (7 decimals). */
+      amount: string;
+      payWith: PayWith;
+      /** XLM only: the most XLM the donor can spend (quote + margin), 7 decimals. */
+      xlmSendMax?: string;
+      purchaseTotal?: string;
+      roundUpTotal?: string;
+    }
+  | { status: "not-offered"; reason: string };
+
+/** Interactive part of the prompt: what the donor may pick, and how to evaluate a pick. */
+export interface DonationChoices {
+  /** Preset amounts in USD, ascending, already within [min, max]. */
+  presets: string[];
+  /** Smallest amount accepted, in USD ("0.01"). */
+  min: string;
+  /** App cap per donation, in USD. */
+  max: string;
+  /** Whether round-up is available (USDC purchase only; never on the Soroban follow-up). */
+  roundUp: boolean;
+  /** Pay assets the app enabled ("xlm" only when a quote port was given). */
+  payWith: PayWith[];
+  /** The choice the prompt's own fields describe. */
+  selected: DonationChoice;
+  /** Evaluate a choice without changing what will be signed. */
+  check(choice: DonationChoice): Promise<ChoiceCheck>;
+  /**
+   * Evaluate a choice and make it the one signed if confirm resolves true. If the latest
+   * selection is not offered, a true answer is treated as declined: nothing is added.
+   */
+  select(choice: DonationChoice): Promise<ChoiceCheck>;
+}
+
 /** Everything the confirmation step needs to show. No XDR, no addresses of the user. */
 export interface DonationPrompt {
-  /** Donation in USDC (7 decimals, e.g. "0.5000000"). */
+  /** Donation in USD, received by the foundation as USDC (7 decimals, e.g. "0.5000000"). */
   amount: string;
+  /** What the donor pays with for the preselected choice. Absent means "usdc". */
+  payWith?: PayWith;
+  /** XLM only: the most XLM the donor can spend, 7 decimals. */
+  xlmSendMax?: string;
   foundationName: string;
   foundationDomain: string;
   mode: "fixed" | "round-up";
@@ -41,6 +89,8 @@ export interface DonationPrompt {
   purchaseTotal?: string;
   /** Round-up only: the total the purchase rounds up to, in USDC. */
   roundUpTotal?: string;
+  /** Present when the donor may change amount or pay asset before confirming. */
+  choices?: DonationChoices;
 }
 
 export type ConfirmFn = (prompt: DonationPrompt) => Promise<boolean>;
@@ -49,10 +99,27 @@ export interface SpareOptions {
   foundation: Foundation;
   /** Display name. Defaults to the foundation's domain. */
   foundationName?: string;
-  /** Fixed donation, or round-up to the next whole dollar (USDC purchases only). */
-  mode: { amount: string } | { roundUp: true };
+  /**
+   * Preselected donation: a fixed USD amount, or round-up to the next whole dollar (USDC purchases
+   * only). Default: the smallest preset. A fixed amount is added to the presets.
+   */
+  mode?: { amount: string } | { roundUp: true };
+  /** Preset amounts in USD offered in the confirmation step. Default ["0.10", "0.25", "0.50"]. */
+  presets?: string[];
+  /**
+   * Enables paying the donation in XLM (path payment to USDC). The foundation still receives
+   * Circle USDC. USDC stays the default when the donor holds enough of it.
+   */
+  quotes?: PathQuotePort;
+  /**
+   * Asset preselected in the confirmation step when it can pay. Default "usdc" (XLM is then used
+   * only when USDC cannot pay). "xlm" needs `quotes`. The donor can switch either way.
+   */
+  payWith?: PayWith;
+  /** XLM margin over the quote, basis points (0-1000). Default 200 (2%). */
+  slippageBps?: number;
   appId: string;
-  /** Your cap per donation, in USDC. */
+  /** Your cap per donation, in USD. */
   maxAmount: string;
   accounts: AccountPort;
   fetch?: FetchLike;
@@ -67,7 +134,7 @@ export interface SpareOptions {
   theme?: Theme;
   /** Wallet id (e.g. "LEDGER") or a getter. Defaults to `kit.selectedModule.productId`. */
   wallet?: string | (() => string | undefined);
-  /** Soroban follow-up amount. Defaults to the fixed `mode.amount`; required with round-up. */
+  /** Soroban follow-up amount. Defaults to the fixed `mode.amount` (or the smallest preset); required with round-up. */
   followUpAmount?: string;
 }
 

@@ -49,18 +49,22 @@ export interface RpcPort {
   getLedger?(hash: string): Promise<number | undefined>;
 }
 
+/** What the demo purchase is paid in. XLM needs no trustline on either side. */
+export type PurchaseAsset = "xlm" | "usdc";
+
 export interface PaymentRequest {
   source: string;
   destination: string;
-  /** USDC, up to 7 decimals. */
+  /** Up to 7 decimals, in `asset`. */
   amount: string;
+  asset: PurchaseAsset;
 }
 
 /** Builds unsigned tx XDR. The only place that needs stellar-sdk. */
 export interface TxBuilderPort {
-  /** Classic USDC payment source -> destination, single op, no memo. */
+  /** Classic payment source -> destination in `asset` (XLM or USDC), single op, no memo. */
   buildClassicPayment(req: PaymentRequest): Promise<string>;
-  /** USDC SAC `transfer(source, destination, amount)` as an InvokeHostFunction tx. */
+  /** The asset's SAC `transfer(source, destination, amount)` (native XLM SAC or USDC SAC) as an InvokeHostFunction tx. */
   buildSorobanTransfer(req: PaymentRequest): Promise<string>;
 }
 
@@ -72,6 +76,6 @@ export interface NetworkPorts {
   /** Null when no RPC is configured for this network (Soroban flow unavailable). */
   rpc: RpcPort | null;
   builder: TxBuilderPort;
-  /** Wraps the connected wallet with Spare for this foundation. */
-  createSpare(foundation: DemoFoundation, wallet: WalletKind): SpareSigner;
+  /** Wraps the connected wallet with Spare for this foundation. An XLM purchase preselects XLM for the donation. */
+  createSpare(foundation: DemoFoundation, wallet: WalletKind, purchase: PurchaseAsset): SpareSigner;
 }

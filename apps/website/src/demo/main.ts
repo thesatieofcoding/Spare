@@ -5,6 +5,7 @@
 import type { DemoCopy } from "../i18n/types";
 import { demoConfig, type DemoNetwork } from "./config";
 import { createController } from "./controller";
+import type { PurchaseAsset } from "./ports";
 import { buildView, shouldFocusResult } from "./view";
 
 const root = document.querySelector<HTMLElement>("[data-demo]");
@@ -33,6 +34,7 @@ if (root && copy) {
     if (state.status === "idle") rpcAvailable = null;
     const v = buildView(state, {
       copy: copy as DemoCopy, availability: controller.availability(state.network), rpcAvailable, purchaseAmount: PURCHASE,
+      purchaseAsset: controller.getPurchaseAsset(),
     });
     const show = (sel: string, on: boolean, text?: string): void => {
       const el = $(sel);
@@ -42,6 +44,10 @@ if (root && copy) {
     page.querySelectorAll<HTMLInputElement>("[data-network]").forEach((r) => {
       r.checked = r.value === v.network;
       r.disabled = !v.canSwitchNetwork;
+    });
+    page.querySelectorAll<HTMLInputElement>("[data-purchase-asset]").forEach((r) => {
+      r.checked = r.value === v.purchaseAsset;
+      r.disabled = !v.canSwitchPurchase;
     });
     show("[data-not-configured]", v.notConfigured !== null, v.notConfigured ?? "");
     show("[data-connected]", v.connected !== null, v.connected ?? "");
@@ -75,6 +81,8 @@ if (root && copy) {
 
   page.querySelectorAll<HTMLInputElement>("[data-network]").forEach((r) =>
     r.addEventListener("change", () => controller.selectNetwork(r.value as DemoNetwork)));
+  page.querySelectorAll<HTMLInputElement>("[data-purchase-asset]").forEach((r) =>
+    r.addEventListener("change", () => controller.selectPurchaseAsset(r.value as PurchaseAsset)));
   $("[data-connect]").addEventListener("click", () => void controller.connect());
   $("[data-disconnect]").addEventListener("click", () => controller.disconnect());
   $('[data-flow="classic"]').addEventListener("click", () => void controller.start("classic"));

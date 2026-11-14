@@ -128,12 +128,44 @@ describe("connect", () => {
   });
 });
 
+describe("purchase asset", () => {
+  it("defaults to XLM and can switch to USDC before a flow", async () => {
+    const t = await ready();
+    expect(t.c.getPurchaseAsset()).toBe("xlm");
+    t.c.selectPurchaseAsset("usdc");
+    expect(t.c.getPurchaseAsset()).toBe("usdc");
+    await t.c.start("classic");
+    expect(t.ports.builder.buildClassicPayment).toHaveBeenCalledWith({ source: USER, destination: MERCHANT, amount: "2.35", asset: "usdc" });
+    expect(t.createSpare).toHaveBeenCalledWith(expect.anything(), "classic", "usdc");
+  });
+
+  it("notifies listeners on change and ignores unknown assets", async () => {
+    const t = await ready();
+    const before = t.states.length;
+    t.c.selectPurchaseAsset("usdc");
+    expect(t.states.length).toBe(before + 1);
+    t.c.selectPurchaseAsset("btc" as never);
+    expect(t.c.getPurchaseAsset()).toBe("usdc");
+  });
+
+  it("cannot change while a flow is running", async () => {
+    let release: () => void = () => undefined;
+    const t = await ready({ horizonSubmit: () => new Promise((r) => (release = () => r({ hash: "H" }))) });
+    const run = t.c.start("classic");
+    await vi.waitFor(() => expect(t.c.getState().status).toBe("submitting"));
+    t.c.selectPurchaseAsset("usdc");
+    expect(t.c.getPurchaseAsset()).toBe("xlm");
+    release();
+    await run;
+  });
+});
+
 describe("classic flow", () => {
   it("happy path: builds user->merchant payment, signs with Spare, submits to Horizon", async () => {
     const t = await ready();
     await t.c.start("classic");
-    expect(t.ports.builder.buildClassicPayment).toHaveBeenCalledWith({ source: USER, destination: MERCHANT, amount: "2.35" });
-    expect(t.createSpare).toHaveBeenCalledWith(expect.objectContaining({ account: FOUNDATION, domain: "donatespare.xyz" }), "classic");
+    expect(t.ports.builder.buildClassicPayment).toHaveBeenCalledWith({ source: USER, destination: MERCHANT, amount: "2.35", asset: "xlm" });
+    expect(t.createSpare).toHaveBeenCalledWith(expect.objectContaining({ account: FOUNDATION, domain: "donatespare.xyz" }), "classic", "xlm");
     expect(t.signWithDonation).toHaveBeenCalledWith("XDR_CLASSIC", { address: USER, networkPassphrase: PASS });
     expect(t.submitted).toEqual(["SIGNED_MOD"]);
     expect(t.c.getState()).toMatchObject({
@@ -203,7 +235,7 @@ describe("classic flow", () => {
   it("Ledger wallet kind is passed to the Spare factory", async () => {
     const t = await ready({ wallet: async () => ({ address: USER, wallet: "ledger" }) });
     await t.c.start("classic");
-    expect(t.createSpare).toHaveBeenCalledWith(expect.anything(), "ledger");
+    expect(t.createSpare).toHaveBeenCalledWith(expect.anything(), "ledger", "xlm");
   });
 });
 
@@ -214,7 +246,7 @@ describe("soroban flow", () => {
       signResult: { signedTxXdr: "SIGNED_SOR", changed: false, donation: null, outcome: "passthrough", reason: "soroban" },
     });
     await t.c.start("soroban");
-    expect(t.ports.builder.buildSorobanTransfer).toHaveBeenCalledWith({ source: USER, destination: MERCHANT, amount: "2.35" });
+    expect(t.ports.builder.buildSorobanTransfer).toHaveBeenCalledWith({ source: USER, destination: MERCHANT, amount: "2.35", asset: "xlm" });
     expect(t.signWithDonation).toHaveBeenCalledWith("PREPARED(XDR_SOROBAN)", { address: USER, networkPassphrase: PASS });
     expect(t.offerFollowUp).toHaveBeenCalledWith({ successful: true, sourceAccount: USER, hash: "HSOR" }, { address: USER, networkPassphrase: PASS });
     expect(t.submitted).toEqual(["SIGNED_DONATION"]);

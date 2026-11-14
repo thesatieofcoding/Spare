@@ -9,20 +9,19 @@ import { Address, Asset, Horizon, Operation, TransactionBuilder, nativeToScVal, 
 import { StellarWalletsKit, type Networks as KitNetworks } from "@creit.tech/stellar-wallets-kit";
 import { VarialModule } from "@creit.tech/stellar-wallets-kit/modules/varial";
 import { LobstrModule } from "@creit.tech/stellar-wallets-kit/modules/lobstr";
-import { HorizonAccountPort, NETWORKS } from "spare-sdk";
+import { HorizonAccountPort, HorizonPathQuotePort, NETWORKS } from "spare-sdk";
 import { withSpare, type SignerLike } from "spare-wallets-kit";
 import type { DemoNetwork } from "./config";
-import { PortError, type NetworkPorts, type PaymentRequest, type TxStatus } from "./ports";
+import { PortError, type NetworkPorts, type PaymentRequest, type PurchaseAsset, type TxStatus } from "./ports";
 
 const TESTNET_RPC = "https://soroban-testnet.stellar.org";
 const APP_ID = "spare-demo";
-const FOLLOW_UP_AMOUNT = "0.50";
 const MAX_DONATION = "5";
 
 const messageOf = (e: unknown): string =>
   typeof e === "object" && e !== null && "message" in e ? String((e as { message: unknown }).message) : String(e);
 
-/** "2.35" -> 23500000n (USDC has 7 decimals on Stellar). */
+/** "2.35" -> 23500000n (XLM and USDC both have 7 decimals on Stellar). */
 const toStroops = (amount: string): bigint => {
   const [whole = "0", frac = ""] = amount.split(".");
   return BigInt(whole) * 10_000_000n + BigInt(frac.padEnd(7, "0").slice(0, 7));
@@ -73,6 +72,7 @@ export async function createPorts(network: DemoNetwork): Promise<NetworkPorts> {
   const cfg = NETWORKS[network];
   const passphrase = cfg.passphrase;
   const usdc = new Asset("USDC", cfg.usdcIssuer);
+  const assetOf = (a: PurchaseAsset) => (a === "xlm" ? Asset.native() : usdc);
   const horizon = new Horizon.Server(cfg.horizonUrl);
   const rpcUrl = network === "testnet" ? TESTNET_RPC : (import.meta.env.PUBLIC_SPARE_MAINNET_RPC_URL as string | undefined)?.trim();
   const server = rpcUrl ? new rpc.Server(rpcUrl) : null;
@@ -147,10 +147,11 @@ export async function createPorts(network: DemoNetwork): Promise<NetworkPorts> {
     },
     builder: {
       buildClassicPayment: (req) =>
-        buildTx(req, Operation.payment({ destination: req.destination, asset: usdc, amount: req.amount })),
+        buildTx(req, Operation.payment({ destination: req.destination, asset: assetOf(req.asset), amount: req.amount })),
       buildSorobanTransfer: (req) =>
         buildTx(req, Operation.invokeContractFunction({
-          contract: usdc.contractId(passphrase),
+          // Native XLM has a Stellar Asset Contract too; its id derives from the passphrase.
+          contract: assetOf(req.asset).contractId(passphrase),
           function: "transfer",
           args: [
             new Address(req.source).toScVal(),
@@ -159,15 +160,17 @@ export async function createPorts(network: DemoNetwork): Promise<NetworkPorts> {
           ],
         })),
     },
-    createSpare: (foundation) =>
+    createSpare: (foundation, _wallet, purchase) =>
       withSpare(signer, {
         foundation: { account: foundation.account, domain: foundation.domain },
         foundationName: foundation.name,
-        mode: { roundUp: true },
-        followUpAmount: FOLLOW_UP_AMOUNT,
+        // Default presets (US$0.10 / 0.25 / 0.50, smallest preselected) plus "other" up to the cap;
+        // round-up appears by itself for a USDC purchase.
         appId: APP_ID,
         maxAmount: MAX_DONATION,
         accounts: new HorizonAccountPort({ network }),
+        quotes: new HorizonPathQuotePort({ network }),
+        ...(purchase === "xlm" && { payWith: "xlm" as const }),
         network,
         locale: document.documentElement.lang === "es" ? "es" : "en",
       }),

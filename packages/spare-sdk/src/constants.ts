@@ -15,3 +15,10 @@ export const MAX_TOML_BYTES = 100 * 1024;
 
 /** Largest total fee a transaction can carry (uint32), in stroops. */
 export const MAX_TX_FEE = 4_294_967_295n;
+
+/** Default margin over the quoted XLM for a path payment's sendMax: 2% (basis points). */
+export const DEFAULT_SLIPPAGE_BPS = 200;
+/** Largest margin an app may set: 10%. */
+export const MAX_SLIPPAGE_BPS = 1000;
+/** stellar-core considers paths of at most 5 intermediate assets (PATH_PAYMENT_*_TOO_FEW_OFFERS). */
+export const MAX_PATH_LENGTH = 5;

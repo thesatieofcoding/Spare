@@ -1,19 +1,21 @@
-import {
-  Asset, FeeBumpTransaction, Memo, Operation, Transaction, TransactionBuilder,
-} from "@stellar/stellar-sdk";
+import { FeeBumpTransaction, Memo, Transaction, TransactionBuilder } from "@stellar/stellar-sdk";
 import { formatStroops, parseUsdc, roundUpToWholeDollar, toStroops } from "./amount.js";
 import { memoFor } from "./app-id.js";
-import { MAX_TX_FEE, USDC_CODE } from "./constants.js";
+import { MAX_TX_FEE } from "./constants.js";
 import { checkEligibility } from "./eligibility.js";
 import { perOpFee } from "./fee.js";
 import { hasRequiredOptions } from "./options.js";
 import { isNetwork, NETWORKS } from "./network.js";
 import type { AccountPort, AccountSnapshot } from "./ports.js";
 import { canSignAlone, requiredThreshold } from "./signing.js";
+import { donationOperation, payInfo, payPlan, priceInXlm, type PricedXlm } from "./pay-with.js";
 import { analyzeSpend } from "./spend.js";
 import type { CommonOptions, DonationResult, NotOfferedReason, PassthroughReason } from "./types.js";
 
-/** Provide exactly one of `amount` (fixed USDC) or `roundUp: true` (USDC purchases only). */
+/**
+ * Provide exactly one of `amount` (fixed, in USD) or `roundUp: true` (USDC purchases only).
+ * `payWith: "xlm"` pays it through an XLM -> USDC path payment (see CommonOptions).
+ */
 export type AddDonationOptions = CommonOptions & { amount?: string; roundUp?: boolean };
 
 const SOROBAN_OPS = new Set(["invokeHostFunction", "extendFootprintTtl", "restoreFootprint"]);
@@ -82,6 +84,8 @@ export async function addDonation(
   const network = NETWORKS[networkName];
   if (t.networkPassphrase !== network.passphrase) return no("network-mismatch");
   if (opts.accounts.network !== undefined && opts.accounts.network !== networkName) return no("network-mismatch");
+  const plan = payPlan(opts, networkName);
+  if (typeof plan === "string") return no(plan);
 
   if (t.operations.length === 0) return no("invalid-options"); // nothing to price a fee from
 
@@ -116,6 +120,7 @@ export async function addDonation(
   // Fee: one extra operation at the tx's own per-op rate (ceil, min 100), unless overridden.
   const newFee = perOp * (BigInt(t.operations.length) + 1n);
 
+  let priced: PricedXlm | null = null;
   const reason = await checkEligibility({
     accounts: opts.accounts,
     ...(opts.fetch && { fetch: opts.fetch }),
@@ -128,6 +133,12 @@ export async function addDonation(
     usdcSpend: spend.usdc,
     fee: newFee,
     xlmSpend: spend.xlm,
+    ...(plan.payWith === "xlm" && {
+      priceXlm: async () => {
+        priced = await priceInXlm(plan, amount, network.usdcIssuer);
+        return priced?.sendMax ?? null;
+      },
+    }),
   });
   if (reason) return no(reason);
 
@@ -138,13 +149,7 @@ export async function addDonation(
     fee: perOp.toString(),
     ...(attributed && { memo: Memo.text(memoFor(opts.appId)) }),
   });
-  builder.addOperation(
-    Operation.payment({
-      destination: opts.foundation.account,
-      asset: new Asset(USDC_CODE, network.usdcIssuer),
-      amount: formatStroops(amount),
-    }),
-  );
+  builder.addOperation(donationOperation(opts.foundation.account, amount, network.usdcIssuer, priced));
   const out = builder.build();
 
   return {
@@ -155,6 +160,7 @@ export async function addDonation(
       amount: formatStroops(amount),
       amountStroops: amount,
       foundation: opts.foundation.account,
+      ...payInfo(plan.payWith, priced),
       attributed,
       ...(opts.roundUp === true && {
         purchase: formatStroops(spend.usdc),

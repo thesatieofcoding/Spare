@@ -7,7 +7,7 @@ import { initialState, reduce, type DemoEvent, type DemoState } from "../src/dem
 const ADDR = "GCAEBBLSVFM2RLNBYMEZLFWHCXFHOGVJAXQK2K3WVHS2UGVDVWJOXGQJ";
 const ok = { enabled: true, missing: null } as const;
 const ctx = (over: Partial<ViewContext> = {}): ViewContext => ({
-  copy: en.demo, availability: ok, rpcAvailable: null, purchaseAmount: "2.35", ...over,
+  copy: en.demo, availability: ok, rpcAvailable: null, purchaseAmount: "2.35", purchaseAsset: "xlm", ...over,
 });
 const events: DemoEvent[] = [{ type: "connect" }, { type: "connected", address: ADDR, wallet: "classic" }];
 const ready = (network: "testnet" | "mainnet" = "testnet"): Extract<DemoState, { status: "ready" }> =>
@@ -33,6 +33,19 @@ describe("buildView", () => {
     expect(v.sorobanEnabled).toBe(false);
     expect(v.status).toBe(en.demo.status.idle);
     expect(v.purchase).toContain("2.35");
+  });
+
+  it("purchase text names the purchase asset; it can be switched only outside a flow", () => {
+    expect(buildView(initialState("testnet"), ctx()).purchase).toContain("2.35 XLM");
+    const usdc = buildView(ready(), ctx({ purchaseAsset: "usdc", copy: es.demo }));
+    expect(usdc.purchase).toContain("2.35 USDC");
+    expect(usdc).toMatchObject({ purchaseAsset: "usdc", canSwitchPurchase: true });
+    const running = reduce(ready(), { type: "start", flow: "classic" });
+    expect(buildView(running, ctx()).canSwitchPurchase).toBe(false);
+  });
+
+  it("a missing XLM path has its own reason", () => {
+    expect(en.demo.reasons["no-path"]).toMatch(/path/i);
   });
 
   it("while a flow runs the network cannot be switched nor the wallet disconnected", () => {

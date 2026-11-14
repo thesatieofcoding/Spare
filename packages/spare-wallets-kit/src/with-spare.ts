@@ -1,10 +1,18 @@
-import { TransactionBuilder } from "@stellar/stellar-sdk";
-import { NETWORKS, addDonation, donateAfter, type DonationInfo } from "spare-sdk";
+import { TransactionBuilder, type FeeBumpTransaction, type Transaction } from "@stellar/stellar-sdk";
+import { NETWORKS, addDonation, donateAfter, parseUsdc, type DonationInfo, type PayWith } from "spare-sdk";
 import { createConfirmModal } from "./modal.js";
+import { sameDonation } from "./requote.js";
+import { promptSession, type PromptSession } from "./session.js";
 import type {
-  ConfirmFn, DonationPrompt, FollowUpResult, Locale, MainTxResult, SignOptions, SignResult,
-  SignWithDonationResult, SignerLike, SpareOptions, SpareSigner, WalletKind,
+  ChoiceCheck, ConfirmFn, DonationChoice, DonationChoices, DonationPrompt, FollowUpResult, Locale, MainTxResult,
+  SignOptions, SignResult, SignWithDonationResult, SignerLike, SpareOptions, SpareSigner, WalletKind,
 } from "./types.js";
+
+/** Default preset amounts, in USD. */
+export const DEFAULT_PRESETS = ["0.10", "0.25", "0.50"] as const;
+/** Smallest donation the confirmation step accepts, in USD. */
+export const MIN_AMOUNT = "0.01";
+const MIN_STROOPS = 100_000n;
 
 function walletId(kit: SignerLike, option: SpareOptions["wallet"]): string | undefined {
   try {
@@ -44,6 +52,40 @@ function resolveNetwork(opts: SignOptions, options: SpareOptions): SpareOptions[
 const isLedger = (id: string | undefined) => id !== undefined && /ledger/i.test(id);
 
 /**
+ * Preset amounts: the app's (or the defaults) plus a fixed `mode.amount`, keeping only valid
+ * amounts within [0.01, cap], deduplicated and ascending. Strings are kept as the app wrote them.
+ */
+export function presetAmounts(options: SpareOptions): string[] {
+  const list: unknown[] = [...(Array.isArray(options.presets) ? options.presets : DEFAULT_PRESETS)];
+  if (options.mode && "amount" in options.mode) list.push(options.mode.amount);
+  const cap = parseUsdc(options.maxAmount);
+  const seen = new Map<bigint, string>();
+  for (const p of list) {
+    if (typeof p !== "string") continue;
+    const v = parseUsdc(p);
+    if (v === null || v < MIN_STROOPS || (cap !== null && v > cap) || seen.has(v)) continue;
+    seen.set(v, p);
+  }
+  return [...seen.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)).map(([, s]) => s);
+}
+
+type Offer = { xdr: string; donation: DonationInfo };
+type Evaluation = { offer: Offer } | { reason: string; passthrough?: true };
+
+const toCheck = (e: Evaluation): ChoiceCheck => {
+  if (!("offer" in e)) return { status: "not-offered", reason: e.reason };
+  const d = e.offer.donation;
+  return {
+    status: "offered",
+    amount: d.amount,
+    payWith: d.payWith ?? "usdc",
+    ...(d.sendMax !== undefined && { xlmSendMax: d.sendMax }),
+    ...(d.purchase !== undefined && { purchaseTotal: d.purchase }),
+    ...(d.roundedTotal !== undefined && { roundUpTotal: d.roundedTotal }),
+  };
+};
+
+/**
  * Wraps a Stellar Wallets Kit so every `signTransaction` first offers a Spare donation.
  * Fails closed: if anything in the Spare logic goes wrong, the user's original tx is signed.
  */
@@ -59,14 +101,17 @@ export function withSpare(kit: SignerLike, options: SpareOptions): SpareSigner {
     });
     return defaultConfirm(p);
   };
+  const assets = (): PayWith[] => (options.quotes ? ["usdc", "xlm"] : ["usdc"]);
 
   const prompt = (
-    donation: DonationInfo, mode: "fixed" | "round-up", secondSignature: boolean,
+    donation: DonationInfo, mode: "fixed" | "round-up", secondSignature: boolean, choices: DonationChoices | undefined,
   ): DonationPrompt => {
     const id = walletId(kit, options.wallet);
     const wallet: WalletKind = isLedger(id) ? "ledger" : secondSignature ? "soroban" : "classic";
     return {
       amount: donation.amount,
+      payWith: donation.payWith ?? "usdc",
+      ...(donation.sendMax !== undefined && { xlmSendMax: donation.sendMax }),
       foundationName: options.foundationName ?? options.foundation.domain,
       foundationDomain: options.foundation.domain,
       mode,
@@ -76,7 +121,117 @@ export function withSpare(kit: SignerLike, options: SpareOptions): SpareSigner {
       // Computed once, by the SDK, from every op that spends USDC: never recomputed here.
       ...(donation.purchase !== undefined && { purchaseTotal: donation.purchase }),
       ...(donation.roundedTotal !== undefined && { roundUpTotal: donation.roundedTotal }),
+      ...(choices && { choices }),
     };
+  };
+  /** The picker is opt-in for apps written against 0.1.3: on with `presets`, or when `mode` is omitted. */
+  const pickerOn = options.mode === undefined || options.presets !== undefined;
+
+  /** SDK options shared by both paths, read through the prompt session. */
+  const common = (s: PromptSession, opts: SignOptions, payWith: PayWith) => {
+    const network = resolveNetwork(opts, options);
+    return {
+      foundation: options.foundation,
+      appId: options.appId,
+      maxAmount: options.maxAmount,
+      accounts: s.accounts,
+      ...(network !== undefined && { network }),
+      ...(s.fetch && { fetch: s.fetch }),
+      ...(options.baseFee !== undefined && { baseFee: options.baseFee }),
+      payWith,
+      ...(options.quotes && { quotes: options.quotes }), // live: never cached
+      ...(options.slippageBps !== undefined && { slippageBps: options.slippageBps }),
+    };
+  };
+
+  /**
+   * Runs the confirmation step with choices. `evaluate` prices one choice (SDK checks included);
+   * the first offered candidate is preselected. Resolves the offer to sign, or why there is none.
+   */
+  async function negotiate(
+    s: PromptSession,
+    candidates: DonationChoice[],
+    /** `cap`: XLM only, build with exactly this sendMax (the one the donor saw). */
+    evaluate: (c: DonationChoice, cap?: string) => Promise<Evaluation>,
+    roundUpPossible: boolean,
+    secondSignature: boolean,
+    /** Off for 0.1.3-style integrations (explicit `mode`, no `presets`): plain yes/no prompt. */
+    picker: boolean,
+    passphrase: string,
+  ): Promise<{ offer: Offer } | { declined: true; reason?: string } | { reason: string; passthrough?: true }> {
+    let first: Evaluation = { reason: "invalid-options" };
+    let chosen: DonationChoice | undefined;
+    for (const c of candidates) {
+      first = await evaluate(c);
+      if ("offer" in first || first.passthrough) {
+        chosen = c;
+        break;
+      }
+    }
+    if (!("offer" in first) || !chosen) return first;
+    s.freeze();
+
+    const initial = first.offer;
+    const roundUp = roundUpPossible && (chosen.roundUp === true ||
+      "offer" in (await evaluate({ roundUp: true, payWith: chosen.payWith })));
+
+    const enabled = assets();
+    const guarded = async (c: DonationChoice): Promise<Evaluation> => {
+      if (typeof c !== "object" || c === null || !enabled.includes(c.payWith)) return { reason: "xlm-unavailable" };
+      if (c.roundUp === true) return roundUp ? evaluate({ roundUp: true, payWith: c.payWith }) : { reason: "round-up-unavailable" };
+      const v = typeof c.amount === "string" ? parseUsdc(c.amount) : null;
+      if (v === null || v < MIN_STROOPS) return { reason: "invalid-amount" };
+      return evaluate({ amount: c.amount, payWith: c.payWith });
+    };
+
+    type Selection = { offer: Offer; choice: DonationChoice } | null;
+    let latest = 0;
+    let selected: Promise<Selection> = Promise.resolve({ offer: initial, choice: chosen });
+    const choices: DonationChoices = {
+      presets: presetAmounts(options),
+      min: MIN_AMOUNT,
+      max: options.maxAmount,
+      roundUp,
+      payWith: enabled,
+      selected: chosen,
+      check: async (c) => toCheck(await guarded(c)),
+      select: (c) => {
+        const ticket = ++latest;
+        const run = guarded(c).catch((): Evaluation => ({ reason: "error" }));
+        // Only the most recent selection counts; a superseded one resolves to nothing.
+        selected = run.then((e): Selection => (ticket === latest && "offer" in e ? { offer: e.offer, choice: c } : null));
+        return run.then(toCheck);
+      },
+    };
+
+    const mode = chosen.roundUp === true ? "round-up" : "fixed";
+    const yes = await confirm(prompt(initial.donation, mode, secondSignature, picker ? choices : undefined));
+    if (yes !== true) return { declined: true };
+    const sel = await selected;
+    if (!sel) return { declined: true };
+    if (sel.offer.donation.payWith !== "xlm") return { offer: sel.offer };
+
+    // XLM: the quote may be minutes old. Re-quote live and rebuild with the SAME sendMax the donor
+    // approved as the cap: the slippage margin absorbs small moves. Sign only when the fresh raw
+    // quote fits under that cap and the rebuilt tx is the same donation; otherwise fail closed
+    // (the original tx is signed, nothing added, no re-prompt).
+    const shown = sel.offer.donation;
+    const changed = { reason: "quote-changed" } as const;
+    if (shown.sendMax === undefined) return changed;
+    const fresh = await evaluate(sel.choice, shown.sendMax).catch((): Evaluation => ({ reason: "error" }));
+    if (!("offer" in fresh)) return changed;
+    const d = fresh.offer.donation;
+    const same = d.payWith === "xlm" && d.amountStroops === shown.amountStroops && d.foundation === shown.foundation
+      && d.attributed === shown.attributed && d.sendMaxStroops === shown.sendMaxStroops
+      && sameDonation(sel.offer.xdr, fresh.offer.xdr, passphrase);
+    return same ? { offer: fresh.offer } : changed;
+  }
+
+  /** Preselection order: the preferred asset first (USDC unless the app says "xlm"). */
+  const candidatesFor = (base: { amount: string } | { roundUp: true }): DonationChoice[] => {
+    const list = assets();
+    const order = options.payWith === "xlm" && list.includes("xlm") ? (["xlm", "usdc"] as PayWith[]) : list;
+    return order.map((payWith) => ({ ...base, payWith }) as DonationChoice);
   };
 
   type Decision =
@@ -87,24 +242,24 @@ export function withSpare(kit: SignerLike, options: SpareOptions): SpareSigner {
     try {
       const passphrase = resolvePassphrase(opts, options);
       if (!passphrase) return { kind: "original", outcome: "error", reason: "missing-network-passphrase" };
-      const tx = TransactionBuilder.fromXDR(xdr, passphrase);
-      const roundUp = "roundUp" in options.mode;
-      const network = resolveNetwork(opts, options);
-      const r = await addDonation(tx, {
-        foundation: options.foundation,
-        appId: options.appId,
-        maxAmount: options.maxAmount,
-        accounts: options.accounts,
-        ...(network !== undefined && { network }),
-        ...(options.fetch && { fetch: options.fetch }),
-        ...(options.baseFee !== undefined && { baseFee: options.baseFee }),
-        ...("amount" in options.mode ? { amount: options.mode.amount } : { roundUp: true }),
-      });
-      if (r.status === "passthrough") return { kind: "original", outcome: "passthrough", reason: r.reason };
-      if (r.status === "not-offered") return { kind: "original", outcome: "not-offered", reason: r.reason };
-      const yes = await confirm(prompt(r.donation, roundUp ? "round-up" : "fixed", false));
-      if (yes !== true) return { kind: "original", outcome: "declined" };
-      return { kind: "modified", xdr: r.transaction.toXDR(), donation: r.donation };
+      const tx = TransactionBuilder.fromXDR(xdr, passphrase) as Transaction | FeeBumpTransaction;
+      const s = promptSession(options.accounts, options.fetch ?? ((i, init) => globalThis.fetch(i, init)));
+      const evaluate = async (c: DonationChoice, cap?: string): Promise<Evaluation> => {
+        const r = await addDonation(tx, {
+          ...common(s, opts, c.payWith),
+          ...(cap !== undefined && { sendMax: cap }),
+          ...(c.roundUp === true ? { roundUp: true } : { amount: c.amount }),
+        });
+        if (r.status === "passthrough") return { reason: r.reason, passthrough: true };
+        if (r.status === "not-offered") return { reason: r.reason };
+        return { offer: { xdr: r.transaction.toXDR(), donation: r.donation } };
+      };
+      const mode = options.mode;
+      const base = mode && "roundUp" in mode ? { roundUp: true as const } : { amount: mode?.amount ?? presetAmounts(options)[0] ?? MIN_AMOUNT };
+      const r = await negotiate(s, candidatesFor(base), evaluate, true, false, pickerOn, passphrase);
+      if ("declined" in r) return { kind: "original", outcome: "declined", ...(r.reason !== undefined && { reason: r.reason }) };
+      if ("reason" in r) return { kind: "original", outcome: r.passthrough ? "passthrough" : "not-offered", reason: r.reason };
+      return { kind: "modified", xdr: r.offer.xdr, donation: r.offer.donation };
     } catch (e) {
       return { kind: "original", outcome: "error", reason: e instanceof Error ? e.message : "unknown" };
     }
@@ -127,28 +282,30 @@ export function withSpare(kit: SignerLike, options: SpareOptions): SpareSigner {
   }
 
   async function offerFollowUp(main: MainTxResult, opts: SignOptions = {}): Promise<FollowUpResult> {
-    let offered: { xdr: string; donation: DonationInfo };
+    let offered: Offer;
     try {
-      const amount = options.followUpAmount ?? ("amount" in options.mode ? options.mode.amount : undefined);
+      const mode = options.mode;
+      const amount = options.followUpAmount ??
+        (mode === undefined ? presetAmounts(options)[0] : "amount" in mode ? mode.amount : undefined);
       if (amount === undefined) return { status: "skipped", reason: "no-follow-up-amount" };
-      if (!resolvePassphrase(opts, options)) return { status: "skipped", reason: "missing-network-passphrase" };
+      const passphrase = resolvePassphrase(opts, options);
+      if (!passphrase) return { status: "skipped", reason: "missing-network-passphrase" };
       const explicit = opts.networkPassphrase ?? options.networkPassphrase;
-      const network = resolveNetwork(opts, options);
-      const r = await donateAfter(main, {
-        foundation: options.foundation,
-        appId: options.appId,
-        maxAmount: options.maxAmount,
-        accounts: options.accounts,
-        ...(network !== undefined && { network }),
-        ...(options.fetch && { fetch: options.fetch }),
-        ...(options.baseFee !== undefined && { baseFee: options.baseFee }),
-        amount,
-        ...(explicit !== undefined && { networkPassphrase: explicit }),
-      });
-      if (r.status !== "offered") return { status: "skipped", reason: r.reason };
-      const yes = await confirm(prompt(r.donation, "fixed", r.requiresSecondSignature));
-      if (yes !== true) return { status: "skipped", reason: "declined" };
-      offered = { xdr: r.transaction.toXDR(), donation: r.donation };
+      const s = promptSession(options.accounts, options.fetch ?? ((i, init) => globalThis.fetch(i, init)));
+      const evaluate = async (c: DonationChoice, cap?: string): Promise<Evaluation> => {
+        if (c.roundUp === true) return { reason: "round-up-unavailable" };
+        const r = await donateAfter(main, {
+          ...common(s, opts, c.payWith),
+          ...(cap !== undefined && { sendMax: cap }),
+          amount: c.amount,
+          ...(explicit !== undefined && { networkPassphrase: explicit }),
+        });
+        return r.status === "offered" ? { offer: { xdr: r.transaction.toXDR(), donation: r.donation } } : { reason: r.reason };
+      };
+      const r = await negotiate(s, candidatesFor({ amount }), evaluate, false, true, pickerOn, passphrase);
+      if ("declined" in r) return { status: "skipped", reason: r.reason ?? "declined" };
+      if ("reason" in r) return { status: "skipped", reason: r.reason };
+      offered = r.offer;
     } catch {
       return { status: "skipped", reason: "error" };
     }
