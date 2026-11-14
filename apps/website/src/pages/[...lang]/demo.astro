@@ -20,6 +20,7 @@ const networks = [
   { id: "testnet", label: d.testnet },
   { id: "mainnet", label: d.mainnet },
 ] as const;
+const purchaseAssets = ["xlm", "usdc"] as const;
 ---
 
 <BaseLayout lang={lang} title={`${t.pages.demo} — Spare`}>
@@ -51,6 +52,17 @@ const networks = [
         <p class="who" data-connected hidden></p>
         <button type="button" class="btn btn--secondary" data-disconnect hidden>{d.disconnect}</button>
       </div>
+      <fieldset class="networks">
+        <legend>{d.purchaseAssetLabel}</legend>
+        {
+          purchaseAssets.map((a) => (
+            <label class="net">
+              <input type="radio" name="purchase-asset" value={a} data-purchase-asset checked={a === "xlm"} />
+              <span>{a.toUpperCase()}</span>
+            </label>
+          ))
+        }
+      </fieldset>
       <p class="note" data-purchase></p>
       <p class="note">{d.ledgerHint}</p>
     </div>

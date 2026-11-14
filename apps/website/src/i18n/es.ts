@@ -126,7 +126,8 @@ export const es: Messages = {
     connect: "Conectar billetera",
     disconnect: "Desconectar",
     connectedAs: "Conectada como {address}",
-    purchase: "Compra de prueba: US${amount} en USDC a un comercio de prueba. Spare puede ofrecerte sumar una donación pequeña a la fundación de prueba. No se agrega nada si no dices que sí.",
+    purchase: "Compra de prueba: {amount} {asset} a un comercio de prueba. Spare puede ofrecerte una donación pequeña a la fundación de prueba: eliges el monto y la pagas en XLM o USDC. La fundación siempre recibe USDC. No se agrega nada si no dices que sí.",
+    purchaseAssetLabel: "Pagar la compra con",
     ledgerHint: "¿Usas un Ledger? Confirma cada transacción en el dispositivo.",
     classic: {
       title: "Pago clásico",
@@ -135,7 +136,7 @@ export const es: Messages = {
     },
     soroban: {
       title: "Llamada Soroban",
-      body: "Una transferencia de USDC mediante la llamada a un contrato inteligente.",
+      body: "Una transferencia mediante la llamada a un contrato inteligente (el Stellar Asset Contract del activo).",
       notice: "Una llamada a contrato solo admite una operación, así que la donación es un pago aparte que se envía cuando la llamada tiene éxito. Pide una segunda firma y no es atómica: la primera transacción se mantiene aunque omitas la donación o falle.",
       button: "Llamar al contrato y ofrecer una donación",
     },
@@ -193,7 +194,8 @@ export const es: Messages = {
       "foundation-trustline-full": "La trustline de USDC de la fundación está llena.",
       "user-trustline-missing": "Tu cuenta no tiene trustline de USDC.",
       "user-trustline-unauthorized": "Tu trustline de USDC no está autorizada.",
-      "insufficient-balance": "Tu saldo de USDC no cubre la donación y la comisión.",
+      "insufficient-balance": "Tu saldo no cubre la donación y la comisión.",
+      "no-path": "Ahora no hay una ruta de XLM a USDC para este monto.",
       "account-lookup-failed": "No se pudo revisar tu cuenta.",
       "account-not-synced": "Tu cuenta todavía no está al día, así que no se ofreció la donación.",
       "main-tx-not-successful": "La compra no tuvo éxito.",

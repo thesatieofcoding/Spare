@@ -35,7 +35,7 @@ export const DEMO_REASONS = [
   "foundation-not-verified", "foundation-trustline-missing", "foundation-trustline-unauthorized",
   "foundation-trustline-full", "user-trustline-missing", "user-trustline-unauthorized", "insufficient-balance",
   "account-lookup-failed", "account-not-synced", "main-tx-not-successful", "unsupported-operation", "multisig", "multiple-sources",
-  "extra-signers", "fee-bump", "already-signed", "soroban", "other",
+  "extra-signers", "fee-bump", "already-signed", "soroban", "no-path", "other",
 ] as const;
 export type DemoReasonKey = (typeof DEMO_REASONS)[number];
 
@@ -66,8 +66,10 @@ export interface DemoCopy {
   disconnect: string;
   /** Contains {address}. */
   connectedAs: string;
-  /** Contains {amount}. */
+  /** Contains {amount} and {asset}. */
   purchase: string;
+  /** Legend of the purchase-asset picker. */
+  purchaseAssetLabel: string;
   ledgerHint: string;
   classic: { title: string; body: string; button: string };
   soroban: { title: string; body: string; notice: string; button: string };

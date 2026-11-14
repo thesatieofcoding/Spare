@@ -9,7 +9,7 @@ import type { DemoConfig, DemoNetwork } from "./config";
 import {
   initialState, reduce, type DemoEvent, type DemoState, type ErrorReason, type Flow, type FlowResult,
 } from "./machine";
-import { PortError, type NetworkPorts } from "./ports";
+import { PortError, type NetworkPorts, type PurchaseAsset } from "./ports";
 
 export interface Availability {
   enabled: boolean;
@@ -22,8 +22,10 @@ export interface ControllerOptions {
   /** Resolves the adapters for a network. Called on connect; lazily imports the heavy runtime. */
   loadPorts(network: DemoNetwork): Promise<NetworkPorts>;
   initialNetwork?: DemoNetwork;
-  /** Demo purchase in USDC. Not a whole number so round-up has something to do. */
+  /** Demo purchase amount, in the purchase asset. Not a whole number so round-up has something to do. */
   purchaseAmount?: string;
+  /** Asset the demo purchase is paid in. Default "xlm": a wallet holding only XLM can run both flows. */
+  purchaseAsset?: PurchaseAsset;
   sleep?(ms: number): Promise<void>;
   pollIntervalMs?: number;
   maxPolls?: number;
@@ -40,6 +42,9 @@ export interface DemoController {
   getState(): DemoState;
   subscribe(listener: (state: DemoState) => void): () => void;
   availability(network: DemoNetwork): Availability;
+  getPurchaseAsset(): PurchaseAsset;
+  /** Ignored while a flow is running. */
+  selectPurchaseAsset(asset: PurchaseAsset): void;
   selectNetwork(network: DemoNetwork): void;
   connect(): Promise<void>;
   disconnect(): void;
@@ -63,6 +68,7 @@ export function createController(opts: ControllerOptions): DemoController {
   const MAX_BACKOFF_MS = 10_000;
 
   let state: DemoState = initialState(opts.initialNetwork ?? "testnet");
+  let purchaseAsset: PurchaseAsset = opts.purchaseAsset ?? "xlm";
   let ports: NetworkPorts | null = null;
   /** Bumped by every reset; async work from an older epoch is dropped silently. */
   let epoch = 0;
@@ -167,10 +173,11 @@ export function createController(opts: ControllerOptions): DemoController {
     const token = epoch;
     const foundation = cfg.foundation;
     const signOpts = { address, networkPassphrase: p.passphrase };
-    const payment = { source: address, destination: cfg.merchant, amount: purchaseAmount };
+    const asset = purchaseAsset;
+    const payment = { source: address, destination: cfg.merchant, amount: purchaseAmount, asset };
     dispatch({ type: "start", flow });
     try {
-      const spare = p.createSpare(foundation, wallet);
+      const spare = p.createSpare(foundation, wallet, asset);
       const finish = (result: FlowResult): void => dispatch({ type: "finish", result });
 
       if (flow === "classic") {
@@ -272,6 +279,12 @@ export function createController(opts: ControllerOptions): DemoController {
       return () => void listeners.delete(listener);
     },
     availability,
+    getPurchaseAsset: () => purchaseAsset,
+    selectPurchaseAsset: (asset) => {
+      if (flowRunning() || (asset !== "xlm" && asset !== "usdc") || asset === purchaseAsset) return;
+      purchaseAsset = asset;
+      for (const l of [...listeners]) l(state);
+    },
     selectNetwork: (network) => {
       if (flowRunning()) return; // would drop the main tx hash the user needs
       if (network !== state.network) reset({ type: "switch-network", network });
