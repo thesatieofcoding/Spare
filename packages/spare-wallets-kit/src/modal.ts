@@ -82,7 +82,8 @@ let counter = 0;
 const PRIMARY_GUARD_MS = 400;
 /** Pause after typing in "other amount" before checking it. */
 const TYPING_DEBOUNCE_MS = 300;
-const AMOUNT_RE = /^\d+([.,]\d{1,7})?$/;
+/** Decimal point always; a decimal comma only in Spanish (in English "1,25" may be a thousands separator). */
+const amountRe = (locale: Locale) => (locale === "es" ? /^\d+([.,]\d{1,7})?$/ : /^\d+(\.\d{1,7})?$/);
 
 /** Marks the page behind the dialog inert; returns the undo (leaves already-inert nodes alone). */
 function inertSiblings(host: HTMLElement): () => void {
@@ -96,8 +97,8 @@ function inertSiblings(host: HTMLElement): () => void {
 }
 
 /** Decimal string to a comparable number of hundred-thousandths (7 decimals), or null. */
-function units(s: string): bigint | null {
-  if (!AMOUNT_RE.test(s)) return null;
+function units(s: string, locale: Locale = "en"): bigint | null {
+  if (!amountRe(locale).test(s)) return null;
   const [i = "0", f = ""] = s.replace(",", ".").split(".");
   return BigInt(i) * 10_000_000n + BigInt(f.padEnd(7, "0"));
 }
@@ -308,8 +309,8 @@ export function createConfirmModal(options: ConfirmModalOptions = {}): ConfirmFn
           const preset = k.presets.find((p) => p.input.checked);
           if (preset) return { choice: { amount: preset.input.value, payWith }, valid: true };
           const raw = k.otherInput.value.trim();
-          const v = units(raw);
-          const amount = AMOUNT_RE.test(raw) ? raw.replace(",", ".") : raw;
+          const v = units(raw, locale);
+          const amount = v !== null ? raw.replace(",", ".") : raw;
           const min = units(c.min) ?? 0n;
           const max = units(c.max);
           const valid = v !== null && v >= min && (max === null || v <= max);

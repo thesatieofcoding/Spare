@@ -1,14 +1,14 @@
-import type { AccountPort, AccountSnapshot, FetchLike, PathQuotePort, XlmQuote } from "spare-sdk";
+import type { AccountPort, AccountSnapshot, FetchLike } from "spare-sdk";
 
 /**
  * Ports for one confirmation prompt. The first evaluation reads live (so donateAfter can wait for
- * Horizon to catch up); after `freeze()` every account, stellar.toml and quote already read is
- * reused, so re-checking amounts and pay assets costs no extra lookups. Failures are not cached.
+ * Horizon to catch up); after `freeze()` every account and stellar.toml already read is reused, so
+ * re-checking amounts and pay assets costs no extra lookups. Failures are not cached. XLM quotes
+ * are deliberately NOT cached: prices move, so every check and the final confirm quote live.
  */
 export interface PromptSession {
   accounts: AccountPort;
   fetch: FetchLike | undefined;
-  quotes: PathQuotePort | undefined;
   freeze(): void;
 }
 
@@ -53,14 +53,11 @@ function memo<K, V>(frozen: () => boolean) {
   };
 }
 
-export function promptSession(
-  accounts: AccountPort, fetch: FetchLike | undefined, quotes: PathQuotePort | undefined,
-): PromptSession {
+export function promptSession(accounts: AccountPort, fetch: FetchLike | undefined): PromptSession {
   let frozen = false;
   const isFrozen = () => frozen;
   const acct = memo<string, AccountSnapshot | null>(isFrozen);
   const toml = memo<string, { body: string; status: number; headers: [string, string][] }>(isFrozen);
-  const quote = memo<string, XlmQuote | null>(isFrozen);
 
   return {
     accounts: {
@@ -81,10 +78,6 @@ export function promptSession(
       });
       return new Response(r.body, { status: r.status, headers: r.headers });
     }),
-    quotes: quotes && {
-      ...(quotes.network !== undefined && { network: quotes.network }),
-      quoteXlmForUsdc: (usdc, issuer) => quote(`${usdc}:${issuer}`, () => quotes.quoteXlmForUsdc(usdc, issuer)),
-    },
     freeze() {
       frozen = true;
     },

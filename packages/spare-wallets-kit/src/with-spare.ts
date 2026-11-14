@@ -103,7 +103,7 @@ export function withSpare(kit: SignerLike, options: SpareOptions): SpareSigner {
   const assets = (): PayWith[] => (options.quotes ? ["usdc", "xlm"] : ["usdc"]);
 
   const prompt = (
-    donation: DonationInfo, mode: "fixed" | "round-up", secondSignature: boolean, choices: DonationChoices,
+    donation: DonationInfo, mode: "fixed" | "round-up", secondSignature: boolean, choices: DonationChoices | undefined,
   ): DonationPrompt => {
     const id = walletId(kit, options.wallet);
     const wallet: WalletKind = isLedger(id) ? "ledger" : secondSignature ? "soroban" : "classic";
@@ -120,9 +120,11 @@ export function withSpare(kit: SignerLike, options: SpareOptions): SpareSigner {
       // Computed once, by the SDK, from every op that spends USDC: never recomputed here.
       ...(donation.purchase !== undefined && { purchaseTotal: donation.purchase }),
       ...(donation.roundedTotal !== undefined && { roundUpTotal: donation.roundedTotal }),
-      choices,
+      ...(choices && { choices }),
     };
   };
+  /** The picker is opt-in for apps written against 0.1.3: on with `presets`, or when `mode` is omitted. */
+  const pickerOn = options.mode === undefined || options.presets !== undefined;
 
   /** SDK options shared by both paths, read through the prompt session. */
   const common = (s: PromptSession, opts: SignOptions, payWith: PayWith) => {
@@ -136,7 +138,7 @@ export function withSpare(kit: SignerLike, options: SpareOptions): SpareSigner {
       ...(s.fetch && { fetch: s.fetch }),
       ...(options.baseFee !== undefined && { baseFee: options.baseFee }),
       payWith,
-      ...(s.quotes && { quotes: s.quotes }),
+      ...(options.quotes && { quotes: options.quotes }), // live: never cached
       ...(options.slippageBps !== undefined && { slippageBps: options.slippageBps }),
     };
   };
@@ -151,7 +153,9 @@ export function withSpare(kit: SignerLike, options: SpareOptions): SpareSigner {
     evaluate: (c: DonationChoice) => Promise<Evaluation>,
     roundUpPossible: boolean,
     secondSignature: boolean,
-  ): Promise<{ offer: Offer } | { declined: true } | { reason: string; passthrough?: true }> {
+    /** Off for 0.1.3-style integrations (explicit `mode`, no `presets`): plain yes/no prompt. */
+    picker: boolean,
+  ): Promise<{ offer: Offer } | { declined: true; reason?: string } | { reason: string; passthrough?: true }> {
     let first: Evaluation = { reason: "invalid-options" };
     let chosen: DonationChoice | undefined;
     for (const c of candidates) {
@@ -177,8 +181,9 @@ export function withSpare(kit: SignerLike, options: SpareOptions): SpareSigner {
       return evaluate({ amount: c.amount, payWith: c.payWith });
     };
 
+    type Selection = { offer: Offer; choice: DonationChoice } | null;
     let latest = 0;
-    let selected: Promise<Offer | null> = Promise.resolve(initial);
+    let selected: Promise<Selection> = Promise.resolve({ offer: initial, choice: chosen });
     const choices: DonationChoices = {
       presets: presetAmounts(options),
       min: MIN_AMOUNT,
@@ -190,18 +195,28 @@ export function withSpare(kit: SignerLike, options: SpareOptions): SpareSigner {
       select: (c) => {
         const ticket = ++latest;
         const run = guarded(c).catch((): Evaluation => ({ reason: "error" }));
-        const prev = selected;
-        // Only the most recent selection counts, whatever order the evaluations finish in.
-        selected = run.then(async (e) => (ticket === latest ? ("offer" in e ? e.offer : null) : prev));
+        // Only the most recent selection counts; a superseded one resolves to nothing.
+        selected = run.then((e): Selection => (ticket === latest && "offer" in e ? { offer: e.offer, choice: c } : null));
         return run.then(toCheck);
       },
     };
 
     const mode = chosen.roundUp === true ? "round-up" : "fixed";
-    const yes = await confirm(prompt(initial.donation, mode, secondSignature, choices));
+    const yes = await confirm(prompt(initial.donation, mode, secondSignature, picker ? choices : undefined));
     if (yes !== true) return { declined: true };
-    const offer = await selected;
-    return offer ? { offer } : { declined: true };
+    const sel = await selected;
+    if (!sel) return { declined: true };
+    if (sel.offer.donation.payWith !== "xlm") return { offer: sel.offer };
+
+    // XLM: the quote may be minutes old. Re-quote live and rebuild; sign only if the new sendMax is
+    // within the "≈ N XLM max" the donor saw. Otherwise fail closed (nothing added, no re-prompt).
+    const shown = sel.offer.donation.sendMaxStroops;
+    const fresh = await evaluate(sel.choice).catch((): Evaluation => ({ reason: "error" }));
+    const max = "offer" in fresh ? fresh.offer.donation.sendMaxStroops : undefined;
+    if (!("offer" in fresh) || shown === undefined || max === undefined || max > shown) {
+      return { declined: true, reason: "quote-changed" };
+    }
+    return { offer: fresh.offer };
   }
 
   /** Preselection order: the preferred asset first (USDC unless the app says "xlm"). */
@@ -220,7 +235,7 @@ export function withSpare(kit: SignerLike, options: SpareOptions): SpareSigner {
       const passphrase = resolvePassphrase(opts, options);
       if (!passphrase) return { kind: "original", outcome: "error", reason: "missing-network-passphrase" };
       const tx = TransactionBuilder.fromXDR(xdr, passphrase) as Transaction | FeeBumpTransaction;
-      const s = promptSession(options.accounts, options.fetch ?? ((i, init) => globalThis.fetch(i, init)), options.quotes);
+      const s = promptSession(options.accounts, options.fetch ?? ((i, init) => globalThis.fetch(i, init)));
       const evaluate = async (c: DonationChoice): Promise<Evaluation> => {
         const r = await addDonation(tx, {
           ...common(s, opts, c.payWith),
@@ -232,8 +247,8 @@ export function withSpare(kit: SignerLike, options: SpareOptions): SpareSigner {
       };
       const mode = options.mode;
       const base = mode && "roundUp" in mode ? { roundUp: true as const } : { amount: mode?.amount ?? presetAmounts(options)[0] ?? MIN_AMOUNT };
-      const r = await negotiate(s, candidatesFor(base), evaluate, true, false);
-      if ("declined" in r) return { kind: "original", outcome: "declined" };
+      const r = await negotiate(s, candidatesFor(base), evaluate, true, false, pickerOn);
+      if ("declined" in r) return { kind: "original", outcome: "declined", ...(r.reason !== undefined && { reason: r.reason }) };
       if ("reason" in r) return { kind: "original", outcome: r.passthrough ? "passthrough" : "not-offered", reason: r.reason };
       return { kind: "modified", xdr: r.offer.xdr, donation: r.offer.donation };
     } catch (e) {
@@ -266,7 +281,7 @@ export function withSpare(kit: SignerLike, options: SpareOptions): SpareSigner {
       if (amount === undefined) return { status: "skipped", reason: "no-follow-up-amount" };
       if (!resolvePassphrase(opts, options)) return { status: "skipped", reason: "missing-network-passphrase" };
       const explicit = opts.networkPassphrase ?? options.networkPassphrase;
-      const s = promptSession(options.accounts, options.fetch ?? ((i, init) => globalThis.fetch(i, init)), options.quotes);
+      const s = promptSession(options.accounts, options.fetch ?? ((i, init) => globalThis.fetch(i, init)));
       const evaluate = async (c: DonationChoice): Promise<Evaluation> => {
         if (c.roundUp === true) return { reason: "round-up-unavailable" };
         const r = await donateAfter(main, {
@@ -276,8 +291,8 @@ export function withSpare(kit: SignerLike, options: SpareOptions): SpareSigner {
         });
         return r.status === "offered" ? { offer: { xdr: r.transaction.toXDR(), donation: r.donation } } : { reason: r.reason };
       };
-      const r = await negotiate(s, candidatesFor({ amount }), evaluate, false, true);
-      if ("declined" in r) return { status: "skipped", reason: "declined" };
+      const r = await negotiate(s, candidatesFor({ amount }), evaluate, false, true, pickerOn);
+      if ("declined" in r) return { status: "skipped", reason: r.reason ?? "declined" };
       if ("reason" in r) return { status: "skipped", reason: r.reason };
       offered = r.offer;
     } catch {

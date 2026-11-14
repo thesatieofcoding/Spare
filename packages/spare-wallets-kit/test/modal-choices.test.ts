@@ -133,6 +133,16 @@ describe("createConfirmModal with choices", () => {
     await p;
   });
 
+  it("rejects a decimal comma in English (it could be a thousands separator)", async () => {
+    const c = fakeChoices();
+    const p = createConfirmModal()(prompt(c));
+    await type("1,25");
+    expect(other().getAttribute("aria-invalid")).toBe("true");
+    expect(primary().disabled).toBe(true);
+    secondary().click();
+    await p;
+  });
+
   it("an invalid other amount invalidates the selection so yes cannot sign it", async () => {
     const c = fakeChoices();
     const p = createConfirmModal()(prompt(c));
