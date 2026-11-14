@@ -12,8 +12,8 @@
       "permanent": true
     },
     {
-      "source": "/en/:path*",
-      "destination": "/:path*",
+      "source": "/en/(.*)",
+      "destination": "/$1",
       "permanent": true
     }
   ],
