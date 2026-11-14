@@ -7,7 +7,8 @@ import { describe, expect, it } from "vitest";
  * locally, but FAIL when `CI` is set and dist is missing (CI builds before testing). Marker strings only live in stellar-sdk / the wallets kit.
  */
 const dist = join(import.meta.dirname, "..", "dist");
-const built = existsSync(join(dist, "en", "demo", "index.html"));
+// English is unprefixed (/demo/), Spanish lives under /es/demo/.
+const built = existsSync(join(dist, "demo", "index.html"));
 const MARKERS = ["Test SDF Network ; September 2015", "Public Global Stellar Network"];
 
 const html = (rel: string) => readFileSync(join(dist, rel), "utf8");
@@ -43,15 +44,15 @@ describe.skipIf(!built)("built output", () => {
     files.filter((f) => MARKERS.some((m) => readFileSync(f, "utf8").includes(m)));
 
   it("demo page eagerly loads no stellar-sdk / wallets kit code", () => {
-    for (const lang of ["en", "es"]) {
-      const chunks = eagerChunks(html(`${lang}/demo/index.html`));
+    for (const page of ["demo/index.html", "es/demo/index.html"]) {
+      const chunks = eagerChunks(html(page));
       expect(chunks.length).toBeGreaterThan(0);
       expect(heavy(chunks)).toEqual([]);
     }
   });
 
   it("the demo script reaches the runtime only through a dynamic import", () => {
-    const chunks = eagerChunks(html("en/demo/index.html"));
+    const chunks = eagerChunks(html("demo/index.html"));
     const main = chunks.find((f) => readFileSync(f, "utf8").includes("import("));
     expect(main).toBeDefined();
     expect(readFileSync(main as string, "utf8")).toMatch(/import\(["'`]\.\/runtime\.[^"'`]+\.js["'`]\)/);
