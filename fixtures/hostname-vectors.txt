@@ -1,0 +1,38 @@
+# Shared hostname vectors: `accept|host` or `reject|host`, one per line.
+# Read by contracts/registry (src/test.rs, include_str!) and
+# packages/spare-sdk (test/hostname-parity.test.ts) so both stay in agreement.
+#
+# Vectors are lowercase bare hosts ONLY. The contract validates lowercase-only
+# (one stored form per domain); the SDK HOSTNAME_RE is case-insensitive (/i)
+# and its caller lowercases input first. Uppercase is therefore deliberately
+# NOT a shared vector: contract rejects it, SDK normalizes and accepts it.
+#
+# `example.org.` and `example.org/path` are not shared either: the SDK normalizes
+# input (strips a trailing dot and any path) before the regex, while the contract
+# takes the stored hostname verbatim and rejects both.
+accept|foundation.org
+accept|sub.foundation.org
+accept|123.example
+accept|a-b.example.co
+accept|xn--p1ai.example.org
+accept|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.org
+accept|a.bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+reject|192.168.0.1
+reject|1.2.3.4
+reject|example.123
+reject|uno.o
+reject|uno.xn--p1ai
+reject|uno.a1
+reject|uno.1a
+reject|[::1]
+reject|::1
+reject|localhost
+reject|-a.example.org
+reject|a-.example.org
+reject|a..example.org
+reject|.example.org
+reject|example.org:8080
+reject|user@example.org
+reject|a_b.example.org
+reject|cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc.example.org
+reject|a.dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd

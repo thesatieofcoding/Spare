@@ -728,3 +728,26 @@ fn failed_calls_emit_no_events() {
     let _ = c.try_register(&a, &s(&env, "Uno"), &s(&env, "uno.org"));
     assert_eq!(env.events().all().events().len(), 0);
 }
+
+/// Shared with spare-sdk (packages/spare-sdk/test/hostname-parity.test.ts).
+const HOSTNAME_VECTORS: &str = include_str!("../../../fixtures/hostname-vectors.txt");
+
+#[test]
+fn website_matches_shared_hostname_vectors() {
+    let (env, c, _) = setup();
+    env.mock_all_auths();
+    let n = s(&env, "Uno");
+    let mut seen = 0;
+    for line in HOSTNAME_VECTORS.lines().map(str::trim).filter(|l| !l.is_empty() && !l.starts_with('#')) {
+        let (verdict, host) = line.split_once('|').expect("vector line is verdict|host");
+        let a = Address::generate(&env);
+        let res = c.try_register(&a, &n, &s(&env, host));
+        match verdict {
+            "accept" => assert_eq!(res, Ok(Ok(())), "contract should accept {host:?}"),
+            "reject" => assert_eq!(res, Err(Ok(Error::InvalidWebsite)), "contract should reject {host:?}"),
+            other => panic!("unknown verdict {other:?}"),
+        }
+        seen += 1;
+    }
+    assert!(seen >= 20, "vector file looks truncated: {seen}");
+}
