@@ -1,5 +1,5 @@
 import { TransactionBuilder } from "@stellar/stellar-sdk";
-import { addDonation, donateAfter, type DonationInfo } from "spare-sdk";
+import { NETWORKS, addDonation, donateAfter, type DonationInfo } from "spare-sdk";
 import { createConfirmModal } from "./modal.js";
 import type {
   ConfirmFn, DonationPrompt, FollowUpResult, Locale, MainTxResult, SignOptions, SignResult,
@@ -14,6 +14,20 @@ function walletId(kit: SignerLike, option: SpareOptions["wallet"]): string | und
   } catch {
     return undefined;
   }
+}
+
+/**
+ * Explicit passphrase wins; otherwise the one of an explicit `network`. With neither the
+ * result is undefined (fail closed, as in 0.1): the default network must not parse the tx,
+ * because that check would be circular (a tx is always "from" the network used to read it).
+ */
+function resolvePassphrase(opts: SignOptions, options: SpareOptions): string | undefined {
+  const explicit = opts.networkPassphrase ?? options.networkPassphrase;
+  if (explicit) return explicit;
+  const network = options.network;
+  return network !== undefined && Object.hasOwn(NETWORKS, network)
+    ? NETWORKS[network as keyof typeof NETWORKS].passphrase
+    : undefined;
 }
 
 const isLedger = (id: string | undefined) => id !== undefined && /ledger/i.test(id);
@@ -60,7 +74,7 @@ export function withSpare(kit: SignerLike, options: SpareOptions): SpareSigner {
 
   async function decide(xdr: string, opts: SignOptions): Promise<Decision> {
     try {
-      const passphrase = opts.networkPassphrase ?? options.networkPassphrase;
+      const passphrase = resolvePassphrase(opts, options);
       if (!passphrase) return { kind: "original", outcome: "error", reason: "missing-network-passphrase" };
       const tx = TransactionBuilder.fromXDR(xdr, passphrase);
       const roundUp = "roundUp" in options.mode;
@@ -69,6 +83,7 @@ export function withSpare(kit: SignerLike, options: SpareOptions): SpareSigner {
         appId: options.appId,
         maxAmount: options.maxAmount,
         accounts: options.accounts,
+        ...(options.network !== undefined && { network: options.network }),
         ...(options.fetch && { fetch: options.fetch }),
         ...(options.baseFee !== undefined && { baseFee: options.baseFee }),
         ...("amount" in options.mode ? { amount: options.mode.amount } : { roundUp: true }),
@@ -104,17 +119,18 @@ export function withSpare(kit: SignerLike, options: SpareOptions): SpareSigner {
     try {
       const amount = options.followUpAmount ?? ("amount" in options.mode ? options.mode.amount : undefined);
       if (amount === undefined) return { status: "skipped", reason: "no-follow-up-amount" };
-      const passphrase = opts.networkPassphrase ?? options.networkPassphrase;
-      if (!passphrase) return { status: "skipped", reason: "missing-network-passphrase" };
+      if (!resolvePassphrase(opts, options)) return { status: "skipped", reason: "missing-network-passphrase" };
+      const explicit = opts.networkPassphrase ?? options.networkPassphrase;
       const r = await donateAfter(main, {
         foundation: options.foundation,
         appId: options.appId,
         maxAmount: options.maxAmount,
         accounts: options.accounts,
+        ...(options.network !== undefined && { network: options.network }),
         ...(options.fetch && { fetch: options.fetch }),
         ...(options.baseFee !== undefined && { baseFee: options.baseFee }),
         amount,
-        networkPassphrase: passphrase,
+        ...(explicit !== undefined && { networkPassphrase: explicit }),
       });
       if (r.status !== "offered") return { status: "skipped", reason: r.reason };
       const yes = await confirm(prompt(r.donation, "fixed", r.requiresSecondSignature));

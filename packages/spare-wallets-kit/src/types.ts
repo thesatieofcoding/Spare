@@ -1,4 +1,4 @@
-import type { AccountPort, DonationInfo, FetchLike, Foundation } from "spare-sdk";
+import type { AccountPort, DonationInfo, FetchLike, Foundation, Network } from "spare-sdk";
 
 export type Locale = "en" | "es";
 export type Theme = "light" | "dark" | "auto";
@@ -57,7 +57,9 @@ export interface SpareOptions {
   accounts: AccountPort;
   fetch?: FetchLike;
   baseFee?: string;
-  /** Used to parse XDR when `signTransaction` is not given one. */
+  /** Network the donation is made on. Defaults to "mainnet". Forwarded to the SDK, which checks the tx against it. */
+  network?: Network;
+  /** Used to parse XDR when `signTransaction` is not given one. Defaults to the passphrase of `network`; with neither, the tx is signed unchanged. */
   networkPassphrase?: string;
   /** Replaces the built-in modal. Return true only on an explicit yes. */
   confirm?: ConfirmFn;

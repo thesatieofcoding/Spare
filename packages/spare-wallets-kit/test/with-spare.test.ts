@@ -1,7 +1,11 @@
-import { Memo, TransactionBuilder, Operation, type Transaction } from "@stellar/stellar-sdk";
+import {
+  Account, Asset, BASE_FEE, Keypair, Memo, Networks, TransactionBuilder, Operation, type Transaction,
+} from "@stellar/stellar-sdk";
 import { describe, expect, it, vi } from "vitest";
 import { withSpare, type DonationPrompt } from "../src/index.js";
-import { PASSPHRASE, USDC, baseOptions, buildPathTx, buildTx, fakeKit, foundationKp, user } from "./helpers.js";
+import {
+  PASSPHRASE, USDC, baseOptions, buildPathTx, buildTx, fakeKit, foundationKp, merchant, user, world,
+} from "./helpers.js";
 
 const confirmFn = (answer: boolean | Error) =>
   vi.fn(async (_p: DonationPrompt) => {
@@ -120,14 +124,35 @@ describe("withSpare: classic flow", () => {
     expect(kit.signTransaction.mock.calls[0]?.[0]).toBe(xdr);
   });
 
-  it("fails closed on unparseable xdr and on missing network passphrase", async () => {
+  it("fails closed on unparseable xdr and on an unknown network at runtime", async () => {
     const kit = fakeKit();
-    const spare = withSpare(kit, baseOptions({ confirm: confirmFn(true), networkPassphrase: undefined }) as never);
+    const spare = withSpare(
+      kit, baseOptions({ confirm: confirmFn(true), networkPassphrase: undefined, network: "devnet" }) as never,
+    );
     const r1 = await spare.signWithDonation("not-xdr", { networkPassphrase: PASSPHRASE });
     const r2 = await spare.signWithDonation(buildTx().toXDR());
     expect(r1.outcome).toBe("error");
     expect(r2.outcome).toBe("error");
+    expect(r2.reason).toBe("missing-network-passphrase");
     expect(kit.signTransaction).toHaveBeenCalledTimes(2);
+  });
+
+  it("with neither network nor any passphrase it fails closed and signs the original (as in 0.1)", async () => {
+    const kit = fakeKit();
+    const confirm = confirmFn(true);
+    const spare = withSpare(kit, baseOptions({ confirm, networkPassphrase: undefined }) as never);
+    const xdr = buildTx().toXDR();
+    const r = await spare.signWithDonation(xdr);
+    expect(r).toMatchObject({ changed: false, outcome: "error", reason: "missing-network-passphrase" });
+    expect(confirm).not.toHaveBeenCalled();
+    expect(kit.signTransaction).toHaveBeenCalledWith(xdr, {});
+  });
+
+  it("with neither network nor any passphrase the follow-up is skipped", async () => {
+    const spare = withSpare(fakeKit(), baseOptions({ confirm: confirmFn(true), networkPassphrase: undefined }) as never);
+    expect(await spare.offerFollowUp({ successful: true, sourceAccount: user.publicKey(), hash: "abc" })).toEqual({
+      status: "skipped", reason: "missing-network-passphrase",
+    });
   });
 
   it("propagates wallet signing errors (user rejected in wallet)", async () => {
@@ -233,5 +258,100 @@ describe("withSpare: Soroban follow-up", () => {
     const r = await withSpare(kit, baseOptions({ confirm: confirmFn(new Error("x")) }) as never).offerFollowUp(main);
     expect(r).toMatchObject({ status: "skipped", reason: "error" });
     expect(kit.signTransaction).not.toHaveBeenCalled();
+  });
+});
+
+describe("withSpare: pass-through (never modified, never asks)", () => {
+  const run = async (xdr: string, extra: Record<string, unknown> = {}) => {
+    const confirm = confirmFn(true);
+    const kit = fakeKit();
+    const r = await withSpare(kit, baseOptions({ confirm, ...extra }) as never).signWithDonation(xdr, {
+      networkPassphrase: PASSPHRASE,
+    });
+    expect(confirm).not.toHaveBeenCalled();
+    expect(kit.signTransaction).toHaveBeenCalledOnce();
+    expect(kit.signTransaction.mock.calls[0]?.[0]).toBe(xdr); // original XDR, byte for byte
+    expect(r).toMatchObject({ changed: false, donation: null, outcome: "passthrough" });
+    return r;
+  };
+
+  it("fee-bump envelope", async () => {
+    const inner = buildTx();
+    inner.sign(user);
+    const bump = TransactionBuilder.buildFeeBumpTransaction(Keypair.random(), "400", inner, PASSPHRASE);
+    expect((await run(bump.toXDR())).reason).toBe("fee-bump");
+  });
+
+  it("multisig source (threshold above its master weight)", async () => {
+    const base = world();
+    const multisig = {
+      loadAccount: async (id: string) => {
+        const a = await base.loadAccount(id);
+        return id === user.publicKey() && a
+          ? { ...a, masterWeight: 1, thresholds: { low: 2, medium: 2, high: 2 } }
+          : a;
+      },
+    };
+    expect((await run(buildTx().toXDR(), { accounts: multisig })).reason).toBe("multisig");
+  });
+
+  it("already signed", async () => {
+    const tx = buildTx();
+    tx.sign(user);
+    expect((await run(tx.toXDR())).reason).toBe("already-signed");
+  });
+
+  it("Soroban InvokeHostFunction", async () => {
+    const tx = new TransactionBuilder(new Account(user.publicKey(), "100"), { fee: BASE_FEE, networkPassphrase: PASSPHRASE })
+      .setTimeout(60)
+      .addOperation(Operation.invokeContractFunction({
+        contract: USDC.contractId(PASSPHRASE), function: "transfer", args: [],
+      }))
+      .build();
+    expect((await run(tx.toXDR())).reason).toBe("soroban");
+  });
+});
+
+describe("withSpare: network option", () => {
+  const TESTNET_ISSUER = "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
+  const testnetTx = () =>
+    new TransactionBuilder(new Account(user.publicKey(), "100"), { fee: BASE_FEE, networkPassphrase: Networks.TESTNET })
+      .setTimeout(60)
+      .addOperation(Operation.payment({
+        destination: merchant.publicKey(), asset: new Asset("USDC", TESTNET_ISSUER), amount: "4.20",
+      }))
+      .build();
+
+  it("network 'testnet' parses with the testnet passphrase and offers", async () => {
+    const confirm = confirmFn(true);
+    const kit = fakeKit();
+    const r = await withSpare(
+      kit, baseOptions({ confirm, network: "testnet", networkPassphrase: undefined }) as never,
+    ).signWithDonation(testnetTx().toXDR());
+    expect(r.outcome).toBe("donated");
+    const sent = TransactionBuilder.fromXDR(signedXdr(r.signedTxXdr), Networks.TESTNET) as Transaction;
+    expect((sent.operations[1] as Operation.Payment).asset.getIssuer()).toBe(TESTNET_ISSUER);
+  });
+
+  it("a mainnet tx under network 'testnet' is not offered (network-mismatch) and signed unchanged", async () => {
+    const confirm = confirmFn(true);
+    const kit = fakeKit();
+    const xdr = buildTx().toXDR();
+    const r = await withSpare(kit, baseOptions({ confirm, network: "testnet" }) as never).signWithDonation(xdr, {
+      networkPassphrase: PASSPHRASE,
+    });
+    expect(confirm).not.toHaveBeenCalled();
+    expect(r).toMatchObject({ changed: false, outcome: "not-offered", reason: "network-mismatch" });
+    expect(kit.signTransaction.mock.calls[0]?.[0]).toBe(xdr);
+  });
+
+  it("the Soroban follow-up honors network 'testnet'", async () => {
+    const r = await withSpare(
+      fakeKit(), baseOptions({ confirm: confirmFn(true), network: "testnet", networkPassphrase: undefined }) as never,
+    ).offerFollowUp({ successful: true, sourceAccount: user.publicKey(), hash: "abc" });
+    expect(r.status).toBe("signed");
+    if (r.status !== "signed") return;
+    const tx = TransactionBuilder.fromXDR(signedXdr(r.signedTxXdr), Networks.TESTNET) as Transaction;
+    expect((tx.operations[0] as Operation.Payment).asset.getIssuer()).toBe(TESTNET_ISSUER);
   });
 });

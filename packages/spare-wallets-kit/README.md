@@ -10,9 +10,10 @@ pnpm add spare-wallets-kit spare-sdk @creit.tech/stellar-wallets-kit @stellar/st
 
 ```ts
 import { StellarWalletsKit } from "@creit.tech/stellar-wallets-kit";
-import { Networks } from "@stellar/stellar-sdk";
 import { HorizonAccountPort } from "spare-sdk";
 import { withSpare } from "spare-wallets-kit";
+
+const network = "testnet"; // "mainnet" in production
 
 const spare = withSpare(StellarWalletsKit, {   // v1: pass your kit instance
   foundation: { account: "G...", domain: "foundation.org" }, // must list the account in its stellar.toml
@@ -20,8 +21,8 @@ const spare = withSpare(StellarWalletsKit, {   // v1: pass your kit instance
   mode: { amount: "0.50" },                    // or { roundUp: true } for USDC purchases
   appId: "my-app",                             // <= 22 ASCII bytes
   maxAmount: "5",
-  accounts: new HorizonAccountPort("https://horizon.stellar.org"),
-  networkPassphrase: Networks.PUBLIC,
+  accounts: new HorizonAccountPort({ network }),
+  network,
   locale: "en",                                // "en" | "es"
 });
 
@@ -58,7 +59,8 @@ if (follow.status === "signed") await submit(follow.signedTxXdr); // submitting 
 | `maxAmount` | yes | Your cap per donation, in USDC. |
 | `accounts` | yes | `AccountPort` from spare-sdk (e.g. `HorizonAccountPort`). |
 | `fetch` | no | Custom fetch for `stellar.toml` lookups. |
-| `networkPassphrase` | no | Used to parse XDR when the call does not pass one. Without either, the tx is signed unchanged. |
+| `network` | no | `"mainnet"` (default) or `"testnet"`. Selects the Circle USDC issuer; a tx from another network is signed unchanged. |
+| `networkPassphrase` | no | Used to parse XDR when the call does not pass one. Defaults to the passphrase of `network`. With neither, the tx is signed unchanged. |
 | `confirm` | no | `(prompt: DonationPrompt) => Promise<boolean>`. Replaces the built-in modal. |
 | `locale` / `theme` | no | `"en" \| "es"`; `"light" \| "dark" \| "auto"` for the built-in modal. |
 | `wallet` | no | Wallet id (or getter). Defaults to `kit.selectedModule.productId`. `LEDGER` shows the "check your Ledger" note. |

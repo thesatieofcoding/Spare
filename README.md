@@ -60,9 +60,10 @@ Already signing with Stellar Wallets Kit? Wrap it:
 
 ```ts
 import { StellarWalletsKit } from "@creit.tech/stellar-wallets-kit";
-import { Networks } from "@stellar/stellar-sdk";
 import { HorizonAccountPort } from "spare-sdk";
 import { withSpare } from "spare-wallets-kit";
+
+const network = "testnet"; // "mainnet" in production
 
 const spare = withSpare(StellarWalletsKit, {
   foundation: { account: "G...", domain: "foundation.org" }, // listed in its stellar.toml
@@ -70,8 +71,8 @@ const spare = withSpare(StellarWalletsKit, {
   mode: { amount: "0.50" },          // or { roundUp: true } for USDC purchases
   appId: "my-app",                   // memo becomes "spare:my-app"
   maxAmount: "5",                    // your cap per donation
-  accounts: new HorizonAccountPort("https://horizon.stellar.org"),
-  networkPassphrase: Networks.PUBLIC,
+  accounts: new HorizonAccountPort({ network }),
+  network,
 });
 
 // Drop-in replacement for kit.signTransaction
