@@ -70,9 +70,29 @@ pub struct Deactivated {
     pub website: String,
 }
 
+/// Bidirectional controls and zero-width characters (not covered by
+/// `char::is_control`, which only matches C0/C1/DEL).
+fn is_invisible(c: char) -> bool {
+    matches!(c,
+        '\u{202A}'..='\u{202E}' | '\u{2066}'..='\u{2069}' | '\u{200E}' | '\u{200F}' | '\u{061C}'
+        | '\u{200B}'..='\u{200D}' | '\u{2060}' | '\u{FEFF}')
+}
+
+/// 1..=64 bytes of valid UTF-8, no control, bidi or zero-width characters, and
+/// no leading or trailing whitespace. Any other valid text (accents, CJK) is fine.
 fn validate_name(name: &String) -> Result<(), Error> {
     let len = name.len();
     if len == 0 || len > MAX_NAME_BYTES {
+        return Err(Error::InvalidName);
+    }
+    let mut buf = [0u8; MAX_NAME_BYTES as usize];
+    let buf = &mut buf[..len as usize];
+    name.copy_into_slice(buf);
+    let text = core::str::from_utf8(buf).map_err(|_| Error::InvalidName)?;
+    if text.chars().any(|c| c.is_control() || is_invisible(c)) {
+        return Err(Error::InvalidName);
+    }
+    if text.starts_with(char::is_whitespace) || text.ends_with(char::is_whitespace) {
         return Err(Error::InvalidName);
     }
     Ok(())

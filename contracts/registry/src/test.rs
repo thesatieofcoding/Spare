@@ -347,6 +347,112 @@ fn website_rejects_ip_literals_and_numeric_tld() {
     c.update(&a, &n, &s(&env, "foundation.org"));
 }
 
+const BAD_NAME_CHARS: [&str; 20] = [
+    "\u{202A}", "\u{202E}", "\u{2066}", "\u{2069}", "\u{200E}", "\u{200F}", "\u{061C}",
+    "\u{200B}", "\u{200C}", "\u{200D}", "\u{2060}", "\u{FEFF}", "\n", "\t", "\0", "\u{1F}",
+    "\u{7F}", "\u{80}", "\u{9F}", "\r",
+];
+
+#[test]
+fn name_rejects_control_bidi_and_zero_width() {
+    let (env, c, _) = setup();
+    env.mock_all_auths();
+    let w = s(&env, "uno.org");
+    for ch in BAD_NAME_CHARS {
+        let a = Address::generate(&env);
+        let name = std::format!("Fund{ch}acion");
+        assert_eq!(
+            c.try_register(&a, &s(&env, &name), &w),
+            Err(Ok(Error::InvalidName)),
+            "name containing {ch:?} should be rejected"
+        );
+        let name = std::format!("{ch}Fundacion");
+        assert_eq!(c.try_register(&a, &s(&env, &name), &w), Err(Ok(Error::InvalidName)));
+    }
+}
+
+#[test]
+fn name_rejects_invalid_utf8_without_trapping() {
+    let (env, c, _) = setup();
+    env.mock_all_auths();
+    let a = Address::generate(&env);
+    let w = s(&env, "uno.org");
+    for bytes in [&[0xFFu8, 0xFE][..], &[b'a', 0xC3][..], &[0xC0, 0x80][..], &[0xED, 0xA0, 0x80][..]] {
+        let name = String::from_bytes(&env, bytes);
+        assert_eq!(c.try_register(&a, &name, &w), Err(Ok(Error::InvalidName)));
+    }
+}
+
+#[test]
+fn name_accepts_valid_non_ascii_and_inner_spaces() {
+    let (env, c, _) = setup();
+    env.mock_all_auths();
+    let w = s(&env, "uno.org");
+    for good in ["Fundación Esperanza", "Ñandú", "日本語 財団", "Fondation d'Été"] {
+        let a = Address::generate(&env);
+        c.register(&a, &s(&env, good), &w);
+        assert_eq!(c.get(&a), Some(foundation(&env, good, "uno.org", true)));
+    }
+}
+
+#[test]
+fn name_rejects_leading_and_trailing_spaces() {
+    let (env, c, _) = setup();
+    env.mock_all_auths();
+    let w = s(&env, "uno.org");
+    for bad in [" Uno", "Uno ", " ", "  Uno  "] {
+        let a = Address::generate(&env);
+        assert_eq!(c.try_register(&a, &s(&env, bad), &w), Err(Ok(Error::InvalidName)), "{bad:?}");
+    }
+}
+
+#[test]
+fn website_rejects_control_and_invisible_characters() {
+    let (env, c, _) = setup();
+    env.mock_all_auths();
+    let n = s(&env, "Uno");
+    for ch in BAD_NAME_CHARS {
+        let a = Address::generate(&env);
+        let site = std::format!("uno{ch}.org");
+        assert_eq!(
+            c.try_register(&a, &n, &s(&env, &site)),
+            Err(Ok(Error::InvalidWebsite)),
+            "website containing {ch:?} should be rejected"
+        );
+    }
+    let a = Address::generate(&env);
+    let bad = String::from_bytes(&env, &[b'u', 0xFF, b'.', b'o', b'r', b'g']);
+    assert_eq!(c.try_register(&a, &n, &bad), Err(Ok(Error::InvalidWebsite)));
+}
+
+#[test]
+fn text_hygiene_applies_on_update() {
+    let (env, c, _) = setup();
+    env.mock_all_auths();
+    let a = Address::generate(&env);
+    c.register(&a, &s(&env, "Uno"), &s(&env, "uno.org"));
+    for ch in BAD_NAME_CHARS {
+        let name = std::format!("U{ch}no");
+        assert_eq!(
+            c.try_update(&a, &s(&env, &name), &s(&env, "uno.org")),
+            Err(Ok(Error::InvalidName)),
+            "{ch:?}"
+        );
+        let site = std::format!("uno{ch}.org");
+        assert_eq!(
+            c.try_update(&a, &s(&env, "Uno"), &s(&env, &site)),
+            Err(Ok(Error::InvalidWebsite)),
+            "{ch:?}"
+        );
+    }
+    assert_eq!(
+        c.try_update(&a, &String::from_bytes(&env, &[0xFF]), &s(&env, "uno.org")),
+        Err(Ok(Error::InvalidName))
+    );
+    c.update(&a, &s(&env, "Fundación Esperanza"), &s(&env, "uno.org"));
+    assert_eq!(c.get(&a), Some(foundation(&env, "Fundación Esperanza", "uno.org", true)));
+}
+
 #[test]
 fn update_validates_input() {
     let (env, c, _) = setup();
