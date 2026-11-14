@@ -69,13 +69,13 @@ importers:
 
   packages/spare-indexer:
     dependencies:
+      '@stellar/stellar-sdk':
+        specifier: ^17.4.0
+        version: 17.4.0
       spare-sdk:
         specifier: workspace:^
         version: link:../spare-sdk
     devDependencies:
-      '@stellar/stellar-sdk':
-        specifier: ^17.4.0
-        version: 17.4.0
       '@types/node':
         specifier: ^22.0.0
         version: 22.20.5

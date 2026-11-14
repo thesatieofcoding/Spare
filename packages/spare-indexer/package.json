@@ -14,10 +14,10 @@
     "lint": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@stellar/stellar-sdk": "^17.4.0",
     "spare-sdk": "workspace:^"
   },
   "devDependencies": {
-    "@stellar/stellar-sdk": "^17.4.0",
     "@types/node": "^22.0.0",
     "tsx": "^4.20.0",
     "typescript": "^5.9.0",
