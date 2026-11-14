@@ -15,6 +15,16 @@
       "source": "/en/(.*)",
       "destination": "/$1",
       "permanent": true
+    },
+    {
+      "source": "/docs/quickstart/?",
+      "destination": "/docs/quick-start/",
+      "permanent": true
+    },
+    {
+      "source": "/es/docs/quickstart/?",
+      "destination": "/es/docs/quick-start/",
+      "permanent": true
     }
   ],
   "headers": [

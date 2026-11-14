@@ -24,6 +24,24 @@ describe("legacy /en/ URLs", () => {
     expect(map("/en/docs/spare-sdk/")).toBe("/docs/spare-sdk/");
     expect(map("/engine/")).toBeNull();
   });
+  it("redirects the old /docs/quickstart/ spelling to /docs/quick-start/ (both locales, with or without slash)", () => {
+    const { redirects } = vercel();
+    const map = (p: string) => {
+      for (const r of redirects as { source: string; destination: string; permanent: boolean }[]) {
+        if (r.source.includes("quickstart") && new RegExp(`^${r.source}$`).test(p)) {
+          expect(r.permanent).toBe(true);
+          return r.destination;
+        }
+      }
+      return null;
+    };
+    expect(map("/docs/quickstart/")).toBe("/docs/quick-start/");
+    expect(map("/docs/quickstart")).toBe("/docs/quick-start/");
+    expect(map("/es/docs/quickstart/")).toBe("/es/docs/quick-start/");
+    expect(map("/es/docs/quickstart")).toBe("/es/docs/quick-start/");
+    expect(map("/docs/quick-start/")).toBeNull();
+    expect(map("/docs/quickstarts/")).toBeNull();
+  });
   it("vercel.json does not redirect the root", () => {
     const { redirects } = vercel();
     expect(redirects.some((r: { source: string }) => r.source === "/")).toBe(false);
