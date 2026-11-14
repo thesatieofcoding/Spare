@@ -1,6 +1,6 @@
 {
   "name": "spare-sdk",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Add a per-transaction USDC micro-donation to any Stellar app.",
   "type": "module",
   "license": "MIT",
