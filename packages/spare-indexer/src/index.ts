@@ -8,3 +8,5 @@ export { mergeRecords } from "./domain/merge.js";
 export { aggregate, type FoundationAggregate } from "./domain/aggregate.js";
 export { serializeSnapshot, type SnapshotV1, type FoundationData } from "./domain/snapshot.js";
 export { assertNoDonorAddresses } from "./domain/privacy.js";
+export type { RpcPort, HorizonPort, DomainVerifier, ClockPort, SnapshotStore, Cursor } from "./ports.js";
+export { parseConfig, EXIT, type IndexerConfig, type SeedAccount, type ConfigResult } from "./config.js";
