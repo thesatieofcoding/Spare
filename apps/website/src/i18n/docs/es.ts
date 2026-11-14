@@ -150,6 +150,7 @@ export const esDocs: DocsContent = {
           ["`insufficient-balance`", "No alcanza el USDC, o el XLM para la comisión más el XLM que envía la transacción."],
           ["`account-lookup-failed`", "No se pudo cargar la cuenta."],
           ["`main-tx-not-successful`", "Solo `donateAfter`: la transacción principal no resultó bien."],
+          ["`account-not-synced`", "Solo `donateAfter`: Horizon no alcanzó a la transacción principal a tiempo, así que no se armó nada."],
         ],
       },
       { t: "h2", id: "donation-info", text: "DonationInfo", toc: "DonationInfo" },

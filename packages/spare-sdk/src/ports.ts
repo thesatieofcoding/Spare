@@ -7,6 +7,8 @@ export type FetchLike = (input: string | URL | Request, init?: RequestInit) => P
 export interface AccountSnapshot {
   /** Current sequence number (the next tx uses sequence + 1). */
   sequence: string;
+  /** Ledger this view of the account is at (Horizon `last_modified_ledger`), when the port knows. */
+  ledger?: number;
   /** XLM spendable on fees: balance minus reserve and selling liabilities. */
   xlmAvailable: bigint;
   /** Circle-USDC trustline, or null when there is none. */

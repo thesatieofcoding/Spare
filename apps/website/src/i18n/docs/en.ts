@@ -150,6 +150,7 @@ export const enDocs: DocsContent = {
           ["`insufficient-balance`", "Not enough USDC, or XLM for the fee plus any XLM the transaction sends."],
           ["`account-lookup-failed`", "The account could not be loaded."],
           ["`main-tx-not-successful`", "`donateAfter` only: the main transaction did not succeed."],
+          ["`account-not-synced`", "`donateAfter` only: Horizon had not caught up with the main transaction in time, so nothing was built."],
         ],
       },
       { t: "h2", id: "donation-info", text: "DonationInfo", toc: "DonationInfo" },

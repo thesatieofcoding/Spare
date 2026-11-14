@@ -53,7 +53,7 @@ A tx built for the other network is `not-offered` with `network-mismatch`. Pass 
 
 `passthrough` (tx untouched): `fee-bump`, `already-signed`, `soroban`, `multiple-sources`, `multisig` (the master key alone cannot meet the tx's threshold: medium, or high with `setOptions`/`accountMerge`), `extra-signers` (CAP-21 `extraSigners` precondition).
 
-`not-offered`: `invalid-options` (incl. malformed `baseFee`), `invalid-app-id`, `invalid-amount`, `invalid-foundation`, `amount-over-cap`, `round-up-needs-usdc-purchase`, `round-up-already-whole`, `foundation-not-verified`, `foundation-trustline-missing`, `foundation-trustline-unauthorized`, `foundation-trustline-full` (no room under the trustline limit), `user-trustline-missing`, `user-trustline-unauthorized`, `unsupported-operation` (the tx has ops that can spend funds in ways Spare does not model, e.g. `manageBuyOffer`, `createClaimableBalance`, `liquidityPoolDeposit`, `accountMerge`), `insufficient-balance` (USDC, or XLM for the fee plus any XLM the tx sends), `network-mismatch` (the tx passphrase is not the one of `network`), `account-lookup-failed`, `main-tx-not-successful`, and, from `donateAfter` only, `multisig`.
+`not-offered`: `invalid-options` (incl. malformed `baseFee`), `invalid-app-id`, `invalid-amount`, `invalid-foundation`, `amount-over-cap`, `round-up-needs-usdc-purchase`, `round-up-already-whole`, `foundation-not-verified`, `foundation-trustline-missing`, `foundation-trustline-unauthorized`, `foundation-trustline-full` (no room under the trustline limit), `user-trustline-missing`, `user-trustline-unauthorized`, `unsupported-operation` (the tx has ops that can spend funds in ways Spare does not model, e.g. `manageBuyOffer`, `createClaimableBalance`, `liquidityPoolDeposit`, `accountMerge`), `insufficient-balance` (USDC, or XLM for the fee plus any XLM the tx sends), `network-mismatch` (the tx passphrase is not the one of `network`), `account-lookup-failed`, `main-tx-not-successful`, `account-not-synced` (`donateAfter` only: Horizon did not catch up with the main tx in time), and, from `donateAfter` only, `multisig`.
 
 ### Memo and SEP-29
 
@@ -61,7 +61,7 @@ If a payment, path payment or merge destination has `config.memo_required` set, 
 
 ### Fees
 
-`baseFee` is per operation, digits only, minimum 100 stroops. A malformed value gives `not-offered` / `invalid-options`; it never throws. A tx with a fee of 0 is raised to 100 per operation, and the same number is used for the balance check and the built tx.
+`baseFee` is per operation, digits only, minimum 100 stroops. A malformed value, or one whose total fee (rate x operations) would exceed the uint32 limit, gives `not-offered` / `invalid-options`; it never throws. The same reason is returned for a zero-operation tx and for missing `foundation` / `accounts` (plain-JS callers); a non-string `amount` / `maxAmount` gives `invalid-amount`. A tx with a fee of 0 is raised to 100 per operation, and the same number is used for the balance check and the built tx.
 
 ## Soroban call: `donateAfter`
 
@@ -80,9 +80,11 @@ if (follow.status === "offered") { /* confirm, then sign follow.transaction */ }
 
 The follow-up is a single payment (medium threshold). If the user's account needs more than its master key to sign that, nothing is offered (`multisig`).
 
+Horizon can lag the RPC that reported SUCCESS. Pass the main tx's `ledger` (RPC `getTransaction().ledger`) and/or `sequence` in the first argument: `donateAfter` then re-reads the account (default every 1 s, up to 10 s; `syncIntervalMs`, `syncTimeoutMs`, injectable `sleep`) until the view's `ledger` (Horizon `last_modified_ledger`) is at least that ledger, or its `sequence` is at least the main tx's. If it never catches up the result is `not-offered` / `account-not-synced` and nothing is built. Without `ledger` or `sequence` there is no wait.
+
 ## Account port
 
-`AccountPort.loadAccount(id)` returns an `AccountSnapshot`: `sequence`, `xlmAvailable`, `usdc` (`{ balance, authorized, headroom }` or `null`), `masterWeight`, `thresholds` (`{ low, medium, high }`) and `memoRequired`. `HorizonAccountPort` fills it from Horizon (`headroom` = limit - balance - buying liabilities; `memoRequired` from the `config.memo_required` data entry). `requiresMultipleSignatures` is gone: Spare decides from `masterWeight` and `thresholds` per transaction.
+`AccountPort.loadAccount(id)` returns an `AccountSnapshot`: `sequence`, optional `ledger`, `xlmAvailable`, `usdc` (`{ balance, authorized, headroom }` or `null`), `masterWeight`, `thresholds` (`{ low, medium, high }`) and `memoRequired`. `HorizonAccountPort` fills it from Horizon (`headroom` = limit - balance - buying liabilities; `memoRequired` from the `config.memo_required` data entry). `requiresMultipleSignatures` is gone: Spare decides from `masterWeight` and `thresholds` per transaction.
 
 ## Helpers
 

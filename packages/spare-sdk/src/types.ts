@@ -31,7 +31,8 @@ export type NotOfferedReason =
   | "multisig"
   | "insufficient-balance"
   | "account-lookup-failed"
-  | "main-tx-not-successful";
+  | "main-tx-not-successful"
+  | "account-not-synced";
 
 export interface DonationInfo {
   /** Amount in USDC, 7 decimals. Show this to the user before signing. */

@@ -8,6 +8,7 @@ import type { AccountPort, AccountSnapshot } from "./ports.js";
 export interface HorizonAccountRecord {
   account_id: string;
   sequence: string;
+  last_modified_ledger?: number;
   subentry_count: number;
   num_sponsoring: number;
   num_sponsored: number;
@@ -48,6 +49,7 @@ export function toAccountSnapshot(r: HorizonAccountRecord, issuer: string = USDC
 
   return {
     sequence: r.sequence,
+    ...(typeof r.last_modified_ledger === "number" && { ledger: r.last_modified_ledger }),
     xlmAvailable: nativeNet,
     usdc: line
       ? {

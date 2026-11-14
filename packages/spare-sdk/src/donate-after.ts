@@ -18,6 +18,13 @@ export interface MainTxResult {
   /** Account that signed the main tx and will pay the donation. */
   sourceAccount: string;
   hash?: string;
+  /**
+   * Ledger the main tx closed in (e.g. RPC `getTransaction().ledger`). With it, `donateAfter`
+   * waits until the account view (Horizon) has caught up before reading sequence and balance.
+   */
+  ledger?: number;
+  /** Sequence number the main tx used. Alternative to `ledger`: the account view must reach it. */
+  sequence?: string;
 }
 
 export type DonateAfterOptions = CommonOptions & {
@@ -30,7 +37,27 @@ export type DonateAfterOptions = CommonOptions & {
   networkPassphrase?: string | undefined;
   /** Seconds the follow-up tx stays valid. Default 300. */
   timeoutSeconds?: number;
+  /** Longest wait for the account view to reflect the main tx, in ms. Default 10000. */
+  syncTimeoutMs?: number;
+  /** Pause between account reads while waiting, in ms. Default 1000. */
+  syncIntervalMs?: number;
+  /** Injectable pause (tests). Defaults to setTimeout. */
+  sleep?: (ms: number) => Promise<void>;
 };
+
+const isSequence = (s: unknown): s is string => typeof s === "string" && /^\d{1,20}$/.test(s);
+
+/**
+ * Whether `s` already includes the main tx. When neither side can tell (no ledger/sequence in the
+ * result, or a port that reports neither), assume yes: that is the previous behaviour.
+ */
+function reflectsMainTx(s: AccountSnapshot, main: MainTxResult): boolean {
+  const byLedger = main.ledger !== undefined && s.ledger !== undefined;
+  const bySeq = isSequence(main.sequence) && isSequence(s.sequence);
+  if (!byLedger && !bySeq) return true;
+  if (byLedger && (s.ledger as number) >= (main.ledger as number)) return true;
+  return bySeq && BigInt(s.sequence) >= BigInt(main.sequence as string);
+}
 
 export type DonateAfterResult =
   | {
@@ -67,13 +94,23 @@ export async function donateAfter(
   const baseFee = perOpFee(opts.baseFee);
   if (baseFee === null || baseFee > MAX_TX_FEE) return no("invalid-options");
 
-  let user: AccountSnapshot | null;
-  try {
-    user = await opts.accounts.loadAccount(result.sourceAccount);
-  } catch {
-    return no("account-lookup-failed");
+  // Horizon can lag the RPC that reported SUCCESS: building on a stale sequence gives tx_bad_seq,
+  // and a stale balance misjudges eligibility. Wait (bounded), never submit stale data.
+  const timeout = Number.isFinite(opts.syncTimeoutMs) ? Math.max(0, opts.syncTimeoutMs as number) : 10_000;
+  const interval = Number.isFinite(opts.syncIntervalMs) && (opts.syncIntervalMs as number) > 0 ? (opts.syncIntervalMs as number) : 1000;
+  const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  let user: AccountSnapshot | null = null;
+  for (let waited = 0; ; waited += interval) {
+    try {
+      user = await opts.accounts.loadAccount(result.sourceAccount);
+    } catch {
+      return no("account-lookup-failed");
+    }
+    if (!user) return no("account-lookup-failed");
+    if (reflectsMainTx(user, result)) break;
+    if (waited + interval > timeout) return no("account-not-synced");
+    await sleep(interval);
   }
-  if (!user) return no("account-lookup-failed");
 
   // The follow-up is a single payment: medium threshold. If the master key is not enough the
   // user would need other signers, which this flow cannot collect.
