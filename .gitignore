@@ -25,3 +25,6 @@ CLAUDE.md
 
 # Browser automation artifacts
 .playwright-mcp/
+
+# kuyfi audit reports (local only)
+kuyfi-report-*.json
