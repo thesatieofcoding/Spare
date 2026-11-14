@@ -3,7 +3,9 @@ import {
   Account, Address, Asset, BASE_FEE, Contract, Horizon, Keypair, Networks, Operation, TransactionBuilder,
   FeeBumpTransaction, Transaction, nativeToScVal, rpc,
 } from "@stellar/stellar-sdk";
-import { HorizonAccountPort, NETWORKS, addDonation, donateAfter, type AccountPort } from "spare-sdk";
+import {
+  HorizonAccountPort, HorizonPathQuotePort, NETWORKS, addDonation, donateAfter, type AccountPort,
+} from "spare-sdk";
 import { withSpare } from "spare-wallets-kit";
 
 const PASSPHRASE = "Test SDF Network ; September 2015";
@@ -19,6 +21,7 @@ const network = "testnet" as const;
 const horizon = new Horizon.Server(HORIZON);
 const soroban = new rpc.Server(RPC);
 const accounts = new HorizonAccountPort({ network });
+const quotes = new HorizonPathQuotePort({ network });
 const link = (h: string) => `https://stellar.expert/explorer/testnet/tx/${h}`;
 const secret = (name: string) => execFileSync("stellar", ["keys", "secret", name], { encoding: "utf8" }).trim();
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -80,6 +83,60 @@ async function verifyOnChain(hash: string, expectedFoundationAmount: string) {
   return { t, payments };
 }
 
+/**
+ * An XLM-paid donation on chain: one path_payment_strict_receive from XLM delivering exactly
+ * `usd` Circle USDC to the foundation, spending at most `sendMax` XLM. Also checks the record
+ * shows up in Horizon /accounts/{foundation}/payments (what the indexer rebuild replays).
+ */
+async function verifyXlmDonation(hash: string, usd: string, sendMax: string, opCount: number) {
+  const t = (await horizon.transactions().transaction(hash).call()) as any;
+  eq(t.memo, `spare:${APP_ID}`, "memo");
+  const ops = (await horizon.operations().forTransaction(hash).limit(10).call()).records as any[];
+  eq(ops.length, opCount, "op count");
+  const pp = ops.find((o) => o.type === "path_payment_strict_receive");
+  if (!pp) throw new Error("no path_payment_strict_receive op");
+  eq(pp.to, FOUNDATION.account, "path payment destination");
+  eq(pp.asset_code, "USDC", "received asset");
+  eq(pp.asset_issuer, ISSUER, "received issuer");
+  eq(Number(pp.amount), Number(usd), "USDC received");
+  eq(pp.source_asset_type, "native", "sent asset");
+  if (Number(pp.source_amount) > Number(sendMax)) throw new Error(`spent ${pp.source_amount} XLM > sendMax ${sendMax}`);
+  const pays = (await horizon.payments().forAccount(FOUNDATION.account).order("desc").limit(50).call()).records as any[];
+  const listed = pays.find((p) => p.transaction_hash === hash);
+  if (!listed) throw new Error("path payment missing from /accounts/{foundation}/payments");
+  eq(listed.type, "path_payment_strict_receive", "payments-endpoint type");
+  return `spent ${pp.source_amount} XLM (sendMax ${sendMax}) -> ${pp.amount} USDC`;
+}
+
+/** A friendbot-funded account holding XLM only (no USDC trustline). */
+async function xlmOnlyAccount() {
+  const kp = Keypair.random();
+  await friendbot(kp.publicKey());
+  return kp;
+}
+
+/** Native XLM SAC transfer (Soroban main call), signed and confirmed. Returns hash + ledger. */
+async function sorobanXlmTransfer(kp: Keypair, stroops: bigint) {
+  const contractId = Asset.native().contractId(PASSPHRASE);
+  const acct = await soroban.getAccount(kp.publicKey());
+  const raw = new TransactionBuilder(acct, { fee: BASE_FEE, networkPassphrase: PASSPHRASE })
+    .addOperation(new Contract(contractId).call(
+      "transfer", new Address(kp.publicKey()).toScVal(), new Address(MERCHANT).toScVal(), nativeToScVal(stroops, { type: "i128" }),
+    ))
+    .setTimeout(120)
+    .build();
+  const sim = await soroban.simulateTransaction(raw);
+  if (rpc.Api.isSimulationError(sim)) throw new Error(`simulation: ${sim.error}`);
+  const prepared = rpc.assembleTransaction(raw, sim).build();
+  prepared.sign(kp);
+  const sent = await soroban.sendTransaction(prepared);
+  if (sent.status === "ERROR") throw new Error(`send error: ${JSON.stringify(sent.errorResult)}`);
+  let got = await soroban.getTransaction(sent.hash);
+  for (let i = 0; i < 30 && got.status === "NOT_FOUND"; i++) { await sleep(1000); got = await soroban.getTransaction(sent.hash); }
+  eq(got.status, "SUCCESS", "soroban status");
+  return { hash: sent.hash, ledger: "ledger" in got ? (got.ledger as number) : undefined };
+}
+
 async function main() {
   await guard();
   console.log("Network check OK (testnet). Running scenarios.\n");
@@ -87,6 +144,18 @@ async function main() {
   const userPub = user.publicKey();
   eq(userPub, "GBIWH4BQZADAZ2TKUQU3Y4MOOWWFGJXLMM5JUMX5VVPQURSI7YD3XGY2", "user key");
   const base = { foundation: FOUNDATION, appId: APP_ID, maxAmount: "5", accounts, network } as const;
+
+  // The merchant receives every demo purchase: recycle USDC back so the USDC scenarios can run.
+  {
+    const bal = Number((await horizon.loadAccount(userPub)).balances.find((x: any) => x.asset_code === "USDC" && x.asset_issuer === ISSUER)?.balance ?? 0);
+    if (bal < 8) {
+      const merchant = Keypair.fromSecret(secret("spare-demo-merchant"));
+      eq(merchant.publicKey(), MERCHANT, "merchant key");
+      const top = await buildPayment(MERCHANT, userPub, (10 - bal).toFixed(7));
+      top.sign(merchant);
+      console.log(`Topped up user USDC ${bal} -> 10 (${link(await submit(top))})\n`);
+    }
+  }
 
   // a. classic fixed
   await scenario("a. classic: 1 USDC purchase + fixed 0.50 donation", async () => {
@@ -157,6 +226,40 @@ async function main() {
     eq(ops[0].to, FOUNDATION.account, "follow-up dest");
     eq(Number(ops[0].amount), 0.5, "follow-up amount");
     return `main ${rec(sent.hash)}\n      follow-up ${rec(fh)}`;
+  });
+
+  // f. XLM-paid donations from an account that holds no USDC at all
+  const xlmUser = await xlmOnlyAccount();
+  const xlmPub = xlmUser.publicKey();
+  const xlmBase = { ...base, payWith: "xlm" as const, quotes };
+
+  await scenario("f1. classic: 1 XLM purchase + custom 0.37 donation paid in XLM (no USDC trustline)", async () => {
+    const tx = await buildPayment(xlmPub, MERCHANT, "1", Asset.native());
+    const usdcOnly = await addDonation(tx, { ...base, amount: "0.37" });
+    eq(usdcOnly.status === "not-offered" ? usdcOnly.reason : usdcOnly.status, "user-trustline-missing", "USDC path refused");
+    const r = await addDonation(tx, { ...xlmBase, amount: "0.37" });
+    if (r.status !== "offered") throw new Error(`status ${r.status} ${"reason" in r ? r.reason : ""}`);
+    eq(r.donation.payWith, "xlm", "payWith");
+    r.transaction.sign(xlmUser);
+    const hash = await submit(r.transaction);
+    const spent = await verifyXlmDonation(hash, "0.37", r.donation.sendMax as string, 2);
+    return `${spent}
+      ${rec(hash)}`;
+  });
+
+  await scenario("f2. soroban: native XLM SAC transfer + donateAfter 0.25 paid in XLM", async () => {
+    const main = await sorobanXlmTransfer(xlmUser, 10_000_000n);
+    const follow = await donateAfter(
+      { successful: true, sourceAccount: xlmPub, hash: main.hash, ...(main.ledger !== undefined && { ledger: main.ledger }) },
+      { ...xlmBase, amount: "0.25", syncTimeoutMs: 30_000 },
+    );
+    if (follow.status !== "offered") throw new Error(`follow ${follow.status} ${"reason" in follow ? follow.reason : ""}`);
+    follow.transaction.sign(xlmUser);
+    const fh = await submit(follow.transaction);
+    const spent = await verifyXlmDonation(fh, "0.25", follow.donation.sendMax as string, 1);
+    return `${spent}
+      main ${rec(main.hash)}
+      follow-up ${rec(fh)}`;
   });
 
   // d. negatives (no submission)
@@ -266,6 +369,68 @@ async function main() {
     const ops = (await horizon.operations().forTransaction(hash).call()).records as any[];
     eq(ops.length, 1, "on-chain ops");
     return rec(hash);
+  });
+
+  await scenario("e3. wallets-kit: donor picks a custom 0.33 USDC amount", async () => {
+    const spare = withSpare(signer, {
+      ...kitOpts, quotes,
+      confirm: async (p) => {
+        const c = await p.choices?.select({ amount: "0.33", payWith: "usdc" });
+        return c?.status === "offered";
+      },
+    });
+    const tx = await buildPayment(userPub, MERCHANT, "1");
+    const res = await spare.signWithDonation(tx.toXDR(), { address: userPub });
+    eq(res.outcome, "donated", "outcome");
+    eq(res.donation?.amount, "0.3300000", "donation amount");
+    const hash = await submit(TransactionBuilder.fromXDR(res.signedTxXdr, PASSPHRASE) as Transaction);
+    await verifyOnChain(hash, "0.33");
+    return rec(hash);
+  });
+
+  const xlmSigner = {
+    signTransaction: async (xdr: string, opts?: { networkPassphrase?: string }) => {
+      const t = TransactionBuilder.fromXDR(xdr, opts?.networkPassphrase ?? passphrase) as Transaction;
+      t.sign(xlmUser);
+      return { signedTxXdr: t.toXDR(), signerAddress: xlmPub };
+    },
+  };
+  const xlmKit = { foundation: FOUNDATION, appId: APP_ID, maxAmount: "5", accounts, network, quotes, payWith: "xlm" as const, foundationName: "Spare demo foundation" };
+
+  await scenario("e4. wallets-kit: XLM purchase, XLM preselected, donor picks preset 0.25", async () => {
+    let preselected = "";
+    const spare = withSpare(xlmSigner, {
+      ...xlmKit,
+      confirm: async (p) => {
+        preselected = `${p.amount}/${p.payWith}`;
+        const c = await p.choices?.select({ amount: "0.25", payWith: "xlm" });
+        return c?.status === "offered";
+      },
+    });
+    const tx = await buildPayment(xlmPub, MERCHANT, "1", Asset.native());
+    const res = await spare.signWithDonation(tx.toXDR(), { address: xlmPub });
+    eq(preselected, "0.1000000/xlm", "preselected smallest preset in XLM");
+    eq(res.outcome, "donated", "outcome");
+    const hash = await submit(TransactionBuilder.fromXDR(res.signedTxXdr, PASSPHRASE) as Transaction);
+    const spent = await verifyXlmDonation(hash, "0.25", res.donation?.sendMax as string, 2);
+    return `${spent}\n      ${rec(hash)}`;
+  });
+
+  await scenario("e5. wallets-kit: Soroban XLM SAC call + offerFollowUp, custom 0.12 paid in XLM", async () => {
+    const main = await sorobanXlmTransfer(xlmUser, 5_000_000n);
+    const spare = withSpare(xlmSigner, {
+      ...xlmKit,
+      confirm: async (p) => {
+        eq(p.secondSignature, true, "second signature flagged");
+        const c = await p.choices?.select({ amount: "0.12", payWith: "xlm" });
+        return c?.status === "offered";
+      },
+    });
+    const r = await spare.offerFollowUp({ successful: true, sourceAccount: xlmPub, hash: main.hash, ...(main.ledger !== undefined && { ledger: main.ledger }) }, { address: xlmPub });
+    if (r.status !== "signed") throw new Error(`follow-up ${r.reason}`);
+    const fh = await submit(TransactionBuilder.fromXDR(r.signedTxXdr, PASSPHRASE) as Transaction);
+    const spent = await verifyXlmDonation(fh, "0.12", r.donation.sendMax as string, 1);
+    return `${spent}\n      main ${rec(main.hash)}\n      follow-up ${rec(fh)}`;
   });
 
   console.log(`\n${failed === 0 ? "ALL PASSED" : `${failed} FAILED`}`);
