@@ -111,6 +111,11 @@ export interface SpareOptions {
    * Circle USDC. USDC stays the default when the donor holds enough of it.
    */
   quotes?: PathQuotePort;
+  /**
+   * Asset preselected in the confirmation step when it can pay. Default "usdc" (XLM is then used
+   * only when USDC cannot pay). "xlm" needs `quotes`. The donor can switch either way.
+   */
+  payWith?: PayWith;
   /** XLM margin over the quote, basis points (0-1000). Default 200 (2%). */
   slippageBps?: number;
   appId: string;

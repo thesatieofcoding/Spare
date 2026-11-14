@@ -204,8 +204,12 @@ export function withSpare(kit: SignerLike, options: SpareOptions): SpareSigner {
     return offer ? { offer } : { declined: true };
   }
 
-  const candidatesFor = (base: { amount: string } | { roundUp: true }): DonationChoice[] =>
-    assets().map((payWith) => ({ ...base, payWith }) as DonationChoice);
+  /** Preselection order: the preferred asset first (USDC unless the app says "xlm"). */
+  const candidatesFor = (base: { amount: string } | { roundUp: true }): DonationChoice[] => {
+    const list = assets();
+    const order = options.payWith === "xlm" && list.includes("xlm") ? (["xlm", "usdc"] as PayWith[]) : list;
+    return order.map((payWith) => ({ ...base, payWith }) as DonationChoice);
+  };
 
   type Decision =
     | { kind: "modified"; xdr: string; donation: DonationInfo }

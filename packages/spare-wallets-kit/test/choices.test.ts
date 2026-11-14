@@ -95,6 +95,21 @@ describe("withSpare: amount and pay-asset choices", () => {
     expect(r.outcome).toBe("donated");
   });
 
+  it("payWith 'xlm' preselects XLM even when USDC would work", async () => {
+    let seen: DonationPrompt | undefined;
+    await withSpare(fakeKit(), baseOptions({ confirm: driving(async (p) => void (seen = p)), quotes: quotes(), payWith: "xlm" }) as never)
+      .signWithDonation(buildTx().toXDR(), { networkPassphrase: PASSPHRASE });
+    expect(seen).toMatchObject({ payWith: "xlm", choices: { payWith: ["usdc", "xlm"], selected: { payWith: "xlm" } } });
+  });
+
+  it("payWith 'xlm' falls back to USDC when XLM cannot pay", async () => {
+    let seen: DonationPrompt | undefined;
+    const none: PathQuotePort = { quoteXlmForUsdc: async () => null };
+    await withSpare(fakeKit(), baseOptions({ confirm: driving(async (p) => void (seen = p)), quotes: none, payWith: "xlm" }) as never)
+      .signWithDonation(buildTx().toXDR(), { networkPassphrase: PASSPHRASE });
+    expect(seen?.payWith).toBe("usdc");
+  });
+
   it("without quotes a donor holding no USDC is not offered anything", async () => {
     const confirm = vi.fn(async () => true);
     const r = await withSpare(fakeKit(), baseOptions({ confirm, accounts: xlmOnlyWorld() }) as never)
