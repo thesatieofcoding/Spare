@@ -88,4 +88,4 @@ Horizon can lag the RPC that reported SUCCESS. Pass the main tx's `ledger` (RPC 
 
 ## Helpers
 
-`verifyFoundation(foundation)`, `listVerifiedFoundations(candidates)` (SEP-1 `ACCOUNTS` check: https only, no redirects, 5 s timeout, body capped at 100 KB), `parseUsdc`, `formatStroops`, `roundUpToWholeDollar`. Network access (`fetch`, `AccountPort`) is injectable.
+`verifyFoundation(foundation)`, `listVerifiedFoundations(candidates)` (SEP-1 `ACCOUNTS` check: `domain` is normalized first (an `http(s)://` scheme, path, trailing slash and trailing dot are stripped, lowercased); fetch is https only, no redirects, 5 s timeout, body capped at 100 KB), `parseUsdc`, `formatStroops`, `roundUpToWholeDollar`. Network access (`fetch`, `AccountPort`) is injectable.

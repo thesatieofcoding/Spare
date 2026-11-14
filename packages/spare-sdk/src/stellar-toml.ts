@@ -4,6 +4,18 @@ import type { FetchLike, Foundation } from "./ports.js";
 
 const HOSTNAME_RE = /^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i;
 
+/**
+ * Reduces what a foundation might paste ("https://Example.org/about", "example.org.") to a bare,
+ * lowercase hostname. Only http(s) schemes are stripped; the fetch is always https. Anything
+ * odd (port, userinfo, other scheme) is left in place so the hostname check rejects it.
+ */
+function normalizeDomain(domain: unknown): string | null {
+  if (typeof domain !== "string") return null;
+  let d = domain.trim().toLowerCase().replace(/^https?:\/\//, "");
+  d = d.split(/[/?#]/, 1)[0] ?? "";
+  return d.replace(/\.$/, "");
+}
+
 /** Reads the body as UTF-8 text, giving up (null) as soon as it exceeds `max` bytes. */
 async function readCapped(res: Response, max: number): Promise<string | null> {
   const declared = res.headers.get("content-length");
@@ -28,7 +40,8 @@ async function readCapped(res: Response, max: number): Promise<string | null> {
 
 /**
  * SEP-1 domain verification: true only if `foundation.account` appears in the
- * ACCOUNTS list of https://<domain>/.well-known/stellar.toml. Fails closed:
+ * ACCOUNTS list of https://<domain>/.well-known/stellar.toml, where `domain` is first normalized
+ * (scheme, path, trailing slash and dot stripped, lowercased). Fails closed:
  * no redirects, 5s timeout, body capped at 100KB (checked on Content-Length and while streaming).
  * "Verified" means exactly this, nothing more.
  */
@@ -36,9 +49,10 @@ export async function verifyFoundation(
   foundation: Foundation,
   fetchImpl: FetchLike = globalThis.fetch,
 ): Promise<boolean> {
-  if (!HOSTNAME_RE.test(foundation.domain)) return false;
+  const domain = normalizeDomain(foundation?.domain);
+  if (domain === null || !HOSTNAME_RE.test(domain)) return false;
   try {
-    const res = await fetchImpl(`https://${foundation.domain}/.well-known/stellar.toml`, {
+    const res = await fetchImpl(`https://${domain}/.well-known/stellar.toml`, {
       redirect: "error",
       signal: AbortSignal.timeout(5000),
     });

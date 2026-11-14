@@ -24,7 +24,7 @@ describe("verifyFoundation", () => {
   it("rejects domains that are not bare hostnames (no fetch performed)", async () => {
     let called = false;
     const f = async () => { called = true; return new Response(""); };
-    for (const domain of ["https://x.org", "x.org/path", "x.org:8080", "user@x.org", "", "localhost"]) {
+    for (const domain of ["x.org:8080", "https://x.org:8080/p", "user@x.org", "https://user@x.org", "https://x.org@evil.com", "", "localhost", "ftp://x.org", "x..org", ".x.org"]) {
       expect(await verifyFoundation({ ...FOUNDATION, domain }, f)).toBe(false);
     }
     expect(called).toBe(false);
@@ -32,6 +32,24 @@ describe("verifyFoundation", () => {
   it("rejects oversized stellar.toml (>100KB, SEP-1)", async () => {
     const big = async () => new Response(`# ${"x".repeat(101 * 1024)}\nACCOUNTS = ["${foundationKp.publicKey()}"]`);
     expect(await verifyFoundation(FOUNDATION, big)).toBe(false);
+  });
+});
+
+describe("verifyFoundation: domain normalization", () => {
+  const urls = async (domain: string) => {
+    const seen: string[] = [];
+    const f = async (u: string | URL | Request) => { seen.push(String(u)); return tomlFetch([foundationKp.publicKey()])(u); };
+    const ok = await verifyFoundation({ ...FOUNDATION, domain }, f);
+    return { ok, seen };
+  };
+  it.each([
+    ["https://Foundation.Example", "foundation.example"],
+    ["http://foundation.example/", "foundation.example"],
+    ["https://foundation.example/about/us?x=1#y", "foundation.example"],
+    ["FOUNDATION.EXAMPLE.", "foundation.example"],
+    ["  HTTP://Sub.Foundation.Example./path/  ", "sub.foundation.example"],
+  ])("%s is fetched as https://%s", async (input, host) => {
+    expect(await urls(input)).toEqual({ ok: true, seen: [`https://${host}/.well-known/stellar.toml`] });
   });
 });
 
