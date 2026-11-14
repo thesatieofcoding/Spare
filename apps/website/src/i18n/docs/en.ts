@@ -1,4 +1,7 @@
-import { INSTALL_COMMAND, addDonationSnippet, donateAfterSnippet, kitSnippet, soroban } from "../../lib/docs-snippets";
+import {
+  INSTALL_COMMAND, INSTALL_NPM, INSTALL_YARN, addDonationSnippet, donateAfterSnippet, kitSnippet,
+  signWithDonationSnippet, soroban, testnetDonateSnippet, testnetFundSnippet,
+} from "../../lib/docs-snippets";
 import type { DocsContent, FaqItem } from "./types";
 
 const SDK_INSTALL = "pnpm add spare-sdk @stellar/stellar-sdk";
@@ -68,19 +71,33 @@ export const enDocs: DocsContent = {
   "quick-start": {
     title: "Quick start",
     metaTitle: "Quick start — Spare documentation",
-    lead: "Add the change-donation question to your Stellar app. This walkthrough covers installing the SDK, the wallets kit, and a first pass through the confirmation flow.",
+    lead: "Add the donation question to your Stellar app. Try it end to end on testnet with the demo foundation first, then point it at a real foundation.",
     blocks: [
-      { t: "code", code: INSTALL_COMMAND, label: "Install" },
       { t: "h2", id: "install", text: "1. Install the packages", toc: "Install" },
-      { t: "p", text: "Add spare-sdk and spare-wallets-kit to your app. The kit opens confirmation in wallets such as Freighter, LOBSTR, or Ledger." },
-      { t: "h2", id: "add-the-kit", text: "2. Ask at the moment of signing", toc: "Add the kit" },
-      { t: "p", text: "Before they sign, show the option to add a little or round up for a foundation in the registry." },
+      { t: "p", text: "Add spare-sdk and spare-wallets-kit to your app. The kit opens confirmation in wallets such as Freighter, LOBSTR, or Ledger. Both packages are ESM-only and need Node 20 or newer: in a Node project set `\"type\": \"module\"` in `package.json`." },
+      { t: "code", code: INSTALL_NPM, label: "npm" },
+      { t: "code", code: INSTALL_COMMAND, label: "pnpm" },
+      { t: "code", code: INSTALL_YARN, label: "yarn" },
+      { t: "h2", id: "testnet", text: "2. Try it on testnet", toc: "Try it on testnet" },
+      { t: "callout", id: "demo-foundation", title: "The demo foundation is not a charity.", body: "Testnet donations go to the demo foundation `GCAEBBLSVFM2RLNBYMEZLFWHCXFHOGVJAXQK2K3WVHS2UGVDVWJOXGQJ` (domain `donatespare.xyz`). They are test funds that return to the Spare builder. Use it only to try the flow; in production you pass a real, registered foundation." },
+      { t: "h3", text: "Get testnet USDC" },
+      { t: "p", text: "You need a testnet account with Circle's testnet USDC (issuer `GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5`). Create one with `stellar keys generate my-user --network testnet --fund` and read the secret with `stellar keys secret my-user`, or let Friendbot fund any keypair. The script below funds it, adds the USDC trustline, and swaps XLM for 5 USDC on the testnet DEX." },
+      { t: "code", code: testnetFundSnippet, label: "fund.ts" },
+      { t: "h3", text: "Run a donation end to end" },
+      { t: "p", text: "This Node script builds a payment, asks Spare for a US$0.50 donation to the demo foundation, signs, and submits to Horizon. The headless `signer` stands in for a wallet and `confirm` stands in for the modal. Save it as `donate.ts` and run it with `SECRET=S... npx tsx donate.ts`." },
+      { t: "code", code: testnetDonateSnippet, label: "donate.ts" },
+      { t: "p", text: "You should see `donated changed: true` and a transaction hash. Open it on a testnet explorer: the payment is followed by a 0.50 USDC payment to the demo foundation, with the memo `spare:quickstart`." },
+      { t: "h2", id: "add-the-kit", text: "3. Ask at the moment of signing", toc: "Add the kit" },
+      { t: "p", text: "In a browser app, wrap Stellar Wallets Kit. Before they sign, the user sees the option to add a little or round up for a foundation. The example below is the production shape: replace the placeholder `G...` and `foundation.org` with your foundation's registered account and its website domain, and `network` with `\"mainnet\"`." },
       { t: "h3", text: "Classic transactions" },
-      { t: "code", code: kitSnippet("en"), label: "Classic transactions" },
+      { t: "code", code: kitSnippet("en"), label: "Production (placeholders)" },
+      { t: "p", text: "`network` is optional when you pass the testnet or mainnet passphrase to `signTransaction` and your version of `spare-wallets-kit` infers the network from it. Passing it explicitly always works." },
+      { t: "p", text: "Need to know whether the hash changed, or why nothing was offered? Use `signWithDonation` instead of `signTransaction`: it returns `{ signedTxXdr, donation, changed, outcome, reason? }`. The `outcome` is `donated`, `declined`, `not-offered`, `passthrough`, or `error`, and every outcome except `donated` signs your original transaction." },
+      { t: "code", code: signWithDonationSnippet, label: "signWithDonation" },
       { t: "h3", text: "Soroban calls" },
       { t: "code", code: soroban, label: "Soroban calls" },
       { t: "p", text: "Building your own interface? Use `addDonation` (classic) or `donateAfter` (Soroban) from [spare-sdk](doc:spare-sdk) directly." },
-      { t: "h2", id: "try-the-flow", text: "3. Keep the registry in view", toc: "Try the flow" },
+      { t: "h2", id: "try-the-flow", text: "4. Keep the registry in view", toc: "Try the flow" },
       { t: "p", text: "The gift goes straight to the foundation. The indexer and dashboard publish the movement." },
       { t: "callout", id: "next-step", title: "They decide, always.", body: "They can add a little, change the amount, or continue without giving. Spare never takes custody of the funds. The movement stays in the public registry." },
     ],
