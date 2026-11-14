@@ -130,14 +130,73 @@ describe("donateAfter: waits for Horizon to catch up with the main tx", () => {
 });
 
 describe("toAccountSnapshot: ledger", () => {
-  it("carries last_modified_ledger when Horizon sends it", async () => {
+  const rec = {
+    account_id: user.publicKey(), sequence: "1", last_modified_ledger: 77, subentry_count: 0, num_sponsoring: 0, num_sponsored: 0,
+    thresholds: { low_threshold: 0, med_threshold: 0, high_threshold: 0 }, signers: [], balances: [],
+  };
+  it("carries the Horizon ingested ledger, never the account's last_modified_ledger", async () => {
     const { toAccountSnapshot } = await import("../src/horizon.js");
-    const rec = {
-      account_id: user.publicKey(), sequence: "1", last_modified_ledger: 77, subentry_count: 0, num_sponsoring: 0, num_sponsored: 0,
-      thresholds: { low_threshold: 0, med_threshold: 0, high_threshold: 0 }, signers: [], balances: [],
-    };
-    expect(toAccountSnapshot(rec).ledger).toBe(77);
-    const { last_modified_ledger: _l, ...noLedger } = rec;
-    expect(toAccountSnapshot(noLedger)).not.toHaveProperty("ledger");
+    expect(toAccountSnapshot(rec, undefined, 900).ledger).toBe(900);
+    expect(toAccountSnapshot(rec)).not.toHaveProperty("ledger");
+  });
+});
+
+describe("HorizonAccountPort: ledger is the ingested ledger (Horizon root)", () => {
+  const account = { ...{
+    account_id: "GA", sequence: "7", last_modified_ledger: 10, subentry_count: 0, num_sponsoring: 0, num_sponsored: 0,
+    thresholds: { low_threshold: 0, med_threshold: 0, high_threshold: 0 }, signers: [], balances: [],
+  } };
+  const stub = (rootBody: unknown, rootStatus = 200) => {
+    const order: string[] = [];
+    const orig = globalThis.fetch;
+    globalThis.fetch = (async (u: string | URL | Request) => {
+      const url = String(u);
+      if (url.includes("/accounts/")) { order.push("account"); return new Response(JSON.stringify(account), { status: 200, headers: { "content-type": "application/json" } }); }
+      order.push("root");
+      return new Response(JSON.stringify(rootBody), { status: rootStatus, headers: { "content-type": "application/json" } });
+    }) as typeof fetch;
+    return { order, restore: () => { globalThis.fetch = orig; } };
+  };
+  it("reads history_latest_ledger before the account (a safe lower bound)", async () => {
+    const { HorizonAccountPort } = await import("../src/horizon.js");
+    const c = stub({ history_latest_ledger: 900 });
+    try {
+      const snap = await new HorizonAccountPort({ horizon: "https://h.example" }).loadAccount("GA");
+      expect(snap?.ledger).toBe(900);
+      expect(c.order).toEqual(["root", "account"]);
+    } finally { c.restore(); }
+  });
+  it("still loads the account, without ledger, when the root call fails", async () => {
+    const { HorizonAccountPort } = await import("../src/horizon.js");
+    const c = stub({ error: "x" }, 500);
+    try {
+      const snap = await new HorizonAccountPort({ horizon: "https://h.example" }).loadAccount("GA");
+      expect(snap?.sequence).toBe("7");
+      expect(snap).not.toHaveProperty("ledger");
+    } finally { c.restore(); }
+  });
+});
+
+describe("donateAfter: sponsored pattern (donor account entry unchanged by the main tx)", () => {
+  const main = { successful: true, sourceAccount: user.publicKey(), ledger: 500 };
+  const opts = (accounts: unknown, over: Record<string, unknown> = {}) => ({
+    foundation: FOUNDATION, amount: "0.50", appId: "demo-app", maxAmount: "5", fetch: verifiedFetch, accounts, ...over,
+  }) as never;
+  const port = (ledger: number | undefined) => {
+    const inner = world();
+    return { async loadAccount(id: string) {
+      const s = await inner.loadAccount(id);
+      return id === user.publicKey() && s ? { ...s, ...(ledger !== undefined && { ledger }) } : s;
+    } };
+  };
+  it("is offered at once when Horizon has ingested the main ledger, even if the account was not modified", async () => {
+    const r = await donateAfter(main, opts(port(500), { sleep: async () => { throw new Error("slept"); } }));
+    expect(r.status).toBe("offered");
+  });
+  it("waits, then account-not-synced, while Horizon ingestion lags the main ledger", async () => {
+    const sleeps: number[] = [];
+    const r = await donateAfter(main, opts(port(498), { sleep: async (ms: number) => void sleeps.push(ms), syncTimeoutMs: 3000, syncIntervalMs: 1000 }));
+    expect(r).toEqual({ status: "not-offered", reason: "account-not-synced" });
+    expect(sleeps.length).toBeGreaterThan(0);
   });
 });

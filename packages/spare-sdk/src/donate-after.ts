@@ -20,10 +20,14 @@ export interface MainTxResult {
   hash?: string;
   /**
    * Ledger the main tx closed in (e.g. RPC `getTransaction().ledger`). With it, `donateAfter`
-   * waits until the account view (Horizon) has caught up before reading sequence and balance.
+   * waits until Horizon has ingested that ledger before reading sequence and balance. Works for
+   * sponsored txs too, where the donor's account entry is not touched.
    */
   ledger?: number;
-  /** Sequence number the main tx used. Alternative to `ledger`: the account view must reach it. */
+  /**
+   * Sequence number the main tx used. Only meaningful when the donor was the tx source (its
+   * sequence was bumped): the account view must reach it. Extra signal next to `ledger`.
+   */
   sequence?: string;
 }
 

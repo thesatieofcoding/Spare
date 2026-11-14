@@ -102,7 +102,7 @@ describe("HorizonAccountPort network", () => {
       const port = new HorizonAccountPort({ network: "testnet" });
       expect(port.network).toBe("testnet");
       const snap = await port.loadAccount("GA");
-      expect(c.urls[0]).toContain("https://horizon-testnet.stellar.org/accounts/GA");
+      expect(c.urls.find((u) => u.includes("/accounts/"))).toContain("https://horizon-testnet.stellar.org/accounts/GA");
       expect(snap?.usdc).toBeNull(); // record holds a mainnet-issuer line
     } finally {
       c.restore();
@@ -112,7 +112,7 @@ describe("HorizonAccountPort network", () => {
     const c = capture();
     try {
       await new HorizonAccountPort({ network: "testnet", horizon: "https://h.example" }).loadAccount("GA");
-      expect(c.urls[0]).toContain("https://h.example/accounts/GA");
+      expect(c.urls.find((u) => u.includes("/accounts/"))).toContain("https://h.example/accounts/GA");
     } finally {
       c.restore();
     }
