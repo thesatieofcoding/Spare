@@ -26,7 +26,7 @@ export interface DemoConfig {
   mainnet: DemoNetworkConfig;
 }
 
-export const DEMO_DOMAIN = "spare-vert.vercel.app";
+export const DEMO_DOMAIN = "donatespare.xyz";
 export const DEMO_FOUNDATION_NAME = "Spare demo foundation";
 /** User-controlled testnet account. Manual prerequisite: authorized USDC trustline. */
 export const TESTNET_FOUNDATION_ACCOUNT = "GCAEBBLSVFM2RLNBYMEZLFWHCXFHOGVJAXQK2K3WVHS2UGVDVWJOXGQJ";

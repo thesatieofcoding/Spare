@@ -28,6 +28,9 @@ describe("demo foundation stellar.toml", () => {
   it("domain matches the astro site", () => {
     expect(astroConfig).toContain(`https://${DEMO_DOMAIN}`);
   });
+  it("ORG_URL points at the canonical domain", () => {
+    expect(toml).toMatch(new RegExp(`ORG_URL\\s*=\\s*"https://${DEMO_DOMAIN.replace(/\./g, "\\.")}"`));
+  });
   it("passes the SDK's verifyFoundation for the testnet foundation", async () => {
     const cfg = createDemoConfig({});
     expect(await verifyFoundation(cfg.testnet.foundation!, fileFetch)).toBe(true);

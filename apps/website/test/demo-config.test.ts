@@ -8,7 +8,7 @@ describe("demo config", () => {
     const f = createDemoConfig({}).testnet.foundation;
     expect(f).toEqual({
       name: "Spare demo foundation",
-      domain: "spare-vert.vercel.app",
+      domain: "donatespare.xyz",
       account: TESTNET_FOUNDATION_ACCOUNT,
     });
   });
@@ -25,7 +25,7 @@ describe("demo config", () => {
   it("uses a provided mainnet foundation without code changes (S4.5)", () => {
     const m = createDemoConfig({ PUBLIC_SPARE_MAINNET_FOUNDATION: ` ${MAINNET_ACCOUNT} ` }).mainnet;
     expect(m.foundation?.account).toBe(MAINNET_ACCOUNT);
-    expect(m.foundation?.domain).toBe("spare-vert.vercel.app");
+    expect(m.foundation?.domain).toBe("donatespare.xyz");
     expect(m.enabled).toBe(true);
   });
   it("merchant accounts are unset by default and read from env when valid", () => {

@@ -10,5 +10,5 @@ ACCOUNTS = [
 
 [DOCUMENTATION]
 ORG_NAME = "Spare demo foundation"
-ORG_URL = "https://spare-vert.vercel.app"
+ORG_URL = "https://donatespare.xyz"
 ORG_DESCRIPTION = "Demo foundation for the Spare micro-donation kit. Demo donations return to the Spare builder; this is not a real charity."

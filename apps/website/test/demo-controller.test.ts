@@ -123,7 +123,7 @@ describe("classic flow", () => {
     const t = await ready();
     await t.c.start("classic");
     expect(t.ports.builder.buildClassicPayment).toHaveBeenCalledWith({ source: USER, destination: MERCHANT, amount: "2.35" });
-    expect(t.createSpare).toHaveBeenCalledWith(expect.objectContaining({ account: FOUNDATION, domain: "spare-vert.vercel.app" }), "classic");
+    expect(t.createSpare).toHaveBeenCalledWith(expect.objectContaining({ account: FOUNDATION, domain: "donatespare.xyz" }), "classic");
     expect(t.signWithDonation).toHaveBeenCalledWith("XDR_CLASSIC", { address: USER, networkPassphrase: PASS });
     expect(t.submitted).toEqual(["SIGNED_MOD"]);
     expect(t.c.getState()).toMatchObject({

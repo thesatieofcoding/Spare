@@ -5,7 +5,7 @@ import { defineConfig } from "astro/config";
 const src = (rel) => fileURLToPath(new URL(rel, import.meta.url));
 
 export default defineConfig({
-  site: "https://spare-vert.vercel.app",
+  site: "https://donatespare.xyz",
   output: "static",
   trailingSlash: "always",
   redirects: { "/": "/en/" },

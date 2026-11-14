@@ -11,7 +11,7 @@
   <a href="https://github.com/thesatieofcoding/Spare/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/thesatieofcoding/Spare/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://www.npmjs.com/package/spare-sdk#provenance"><img alt="npm provenance" src="https://img.shields.io/badge/npm-provenance-3E6650"></a>
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-3E6650"></a>
-  <a href="https://spare-vert.vercel.app"><img alt="Website" src="https://img.shields.io/badge/website-spare--vert.vercel.app-3E6650"></a>
+  <a href="https://donatespare.xyz"><img alt="Website" src="https://img.shields.io/badge/website-donatespare.xyz-3E6650"></a>
 </p>
 
 <p align="center">
