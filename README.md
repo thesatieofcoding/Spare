@@ -111,16 +111,16 @@ Building your own UI? Use [`spare-sdk`](packages/spare-sdk) directly: `addDonati
 | npm releases published with provenance from GitHub Actions | [Release v0.1.4](https://github.com/thesatieofcoding/Spare/actions/runs/43610287959) · [`release.yml`](.github/workflows/release.yml) |
 | Green CI run | [CI on `main`](https://github.com/thesatieofcoding/Spare/actions/runs/43610277836) |
 | Demo app live | [donatespare.xyz/demo](https://donatespare.xyz/demo/) |
-| Mainnet: classic payment with the donation in the same transaction (signed with Ledger) | [`d711eeca…`](https://stellar.expert/explorer/public/tx/d711eeca1649aebdefb3d45a6be33bf11788f82ba75356dd9f8958bd78d4e337) |
+| Mainnet: classic payment with the donation in the same transaction (signed with Varial) | [`557f7fd0…`](https://stellar.expert/explorer/public/tx/557f7fd054207f9ab4100a0186685cce7c46e4a7038b073478e528ad7c7296f1) · also signed with Ledger: [`d711eeca…`](https://stellar.expert/explorer/public/tx/d711eeca1649aebdefb3d45a6be33bf11788f82ba75356dd9f8958bd78d4e337) |
 | Mainnet: Soroban call + tagged follow-up donation (signed with Ledger) | Call [`ca399e81…`](https://stellar.expert/explorer/public/tx/ca399e816de25ebb52d304d1b89ea029d2d5a1939e636f31939a3847302bd04a) · Donation [`229f1e84…`](https://stellar.expert/explorer/public/tx/229f1e849a3d105bf5ddaac2f248c1da88ba95f59f79f7d4659b05d7e75299d8) |
-| Ledger screen recording (Soroban flow, donation shown on the device) | TODO: video link |
+| Mainnet screen recording through the wrapper (classic with Varial, Soroban with Ledger) | TODO: video link |
 | Testnet: classic payment + donation signed with Varial through the wrapper | [`1600fea1…`](https://stellar.expert/explorer/testnet/tx/1600fea12c8ad8dbb2fd59ee95642171f08b08c6236a1031becdcc41b8a05db9) |
 | Testnet: Soroban call + follow-up donation signed with Varial through the wrapper | Call [`dd286449…`](https://stellar.expert/explorer/testnet/tx/dd28644933c0cc06f9c0cceac5b3b1eb6539a4282195a2f4a0ad23057af01c11) · Donation [`bc2c73ec…`](https://stellar.expert/explorer/testnet/tx/bc2c73ecb1499d5a51509c1562bbaf538e382aeb9f00812aaf4053b299aa2fb4) |
-| Quickstart tester recording (developer who did not write Spare, timed) | Tester: Pau Koh ([@Klorenn](https://github.com/Klorenn)) · TODO: video link |
+| Tester recording (developer who did not write Spare) | Tester: Pau Koh ([@Klorenn](https://github.com/Klorenn)) · [Recording](https://github.com/thesatieofcoding/Spare/releases/download/d1-evidence/d1-tester-pau-koh-mainnet-classic.mp4): classic payment + donation on mainnet from the live demo, signed with Varial ([`557f7fd0…`](https://stellar.expert/explorer/public/tx/557f7fd054207f9ab4100a0186685cce7c46e4a7038b073478e528ad7c7296f1)) |
 
-Wallets tested: Ledger and Varial. LOBSTR was not used.
+Wallets used on mainnet: Varial (classic) and Ledger (classic and Soroban), both through Stellar Wallets Kit. Any wallet in the kit works the same way; LOBSTR was not used.
 
-Accounts: mainnet foundation `GBTDED5SE2QAKFQ3Y6NY75QGCKQTQ3Z6H3ZYM4PWUX3X36QMOKEEJFPQ` (domain-verified via [`stellar.toml`](https://donatespare.xyz/.well-known/stellar.toml); demo donations return to the builder), demo merchant `GAKPFMRQLR25DIFUIDWDJ4P6D7VGUSLNBWVNWA5OKA72M4LPUKTDHLUX`, Ledger payer `GDXCVX4JSUVS3JZFOWAVBNWAV4HLO3H4GF7ES3WDN7DEOLPTX4M5YF72`.
+Accounts: mainnet foundation `GBTDED5SE2QAKFQ3Y6NY75QGCKQTQ3Z6H3ZYM4PWUX3X36QMOKEEJFPQ` (domain-verified via [`stellar.toml`](https://donatespare.xyz/.well-known/stellar.toml); demo donations return to the builder), demo merchant `GAKPFMRQLR25DIFUIDWDJ4P6D7VGUSLNBWVNWA5OKA72M4LPUKTDHLUX`, Ledger payer `GDXCVX4JSUVS3JZFOWAVBNWAV4HLO3H4GF7ES3WDN7DEOLPTX4M5YF72`, Varial payer `GCLIUGHWZK75INDCRXQJDMYWZ2VKMLJPUHQHUU2A7FNBKSZJGQF5DGPN`.
 
 ## Development
 
