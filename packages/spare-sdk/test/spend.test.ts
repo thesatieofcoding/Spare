@@ -1,7 +1,8 @@
 import { Asset, Keypair, Operation } from "@stellar/stellar-sdk";
 import { describe, expect, it } from "vitest";
 import { analyzeSpend } from "../src/spend.js";
-import { FAKE_USDC, USDC, merchant, payUsdc, payXlm, stroops } from "./helpers.js";
+import { NETWORKS } from "../src/network.js";
+import { FAKE_USDC, TESTNET_USDC, USDC, merchant, payUsdc, payXlm, stroops } from "./helpers.js";
 
 const poolId = "a".repeat(64);
 const spend = (...ops: ReturnType<typeof payUsdc>[]) => analyzeSpend(ops.map((o) => Operation.fromXDRObject(o)));
@@ -35,5 +36,18 @@ describe("analyzeSpend", () => {
   });
   it("ops that move no funds do not flag other", () => {
     expect(spend(payUsdc("1"), Operation.setOptions({ homeDomain: "x.example" }), Operation.manageData({ name: "a", value: "b" })).other).toBe(false);
+  });
+
+  it("counts only the selected network's issuer as USDC", () => {
+    const op = Operation.fromXDRObject(payUsdc("2", TESTNET_USDC));
+    expect(analyzeSpend([op], NETWORKS.testnet.usdcIssuer)).toMatchObject({ usdc: stroops("2"), other: false });
+    expect(analyzeSpend([op], NETWORKS.mainnet.usdcIssuer)).toMatchObject({ usdc: 0n, other: true });
+    const main = Operation.fromXDRObject(payUsdc("2"));
+    expect(analyzeSpend([main], NETWORKS.testnet.usdcIssuer)).toMatchObject({ usdc: 0n, other: true });
+  });
+  it("rejects third-party USDC on both networks", () => {
+    const op = Operation.fromXDRObject(payUsdc("1", FAKE_USDC));
+    for (const n of [NETWORKS.mainnet, NETWORKS.testnet])
+      expect(analyzeSpend([op], n.usdcIssuer)).toMatchObject({ usdc: 0n, other: true });
   });
 });

@@ -1,3 +1,5 @@
+import type { Network } from "./network.js";
+
 /** Injectable fetch (same shape as the global one). */
 export type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 
@@ -24,6 +26,8 @@ export interface AccountSnapshot {
 }
 
 export interface AccountPort {
+  /** Network this port reads from. When set, Spare refuses to pair it with another network. */
+  readonly network?: Network;
   /** Resolves null when the account does not exist. May throw on network errors. */
   loadAccount(accountId: string): Promise<AccountSnapshot | null>;
 }

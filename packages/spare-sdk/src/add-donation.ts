@@ -3,9 +3,10 @@ import {
 } from "@stellar/stellar-sdk";
 import { formatStroops, parseUsdc, roundUpToWholeDollar, toStroops } from "./amount.js";
 import { memoFor } from "./app-id.js";
-import { USDC_CODE, USDC_ISSUER } from "./constants.js";
+import { USDC_CODE } from "./constants.js";
 import { checkEligibility } from "./eligibility.js";
 import { perOpFee } from "./fee.js";
+import { isNetwork, NETWORKS } from "./network.js";
 import type { AccountPort, AccountSnapshot } from "./ports.js";
 import { canSignAlone, requiredThreshold } from "./signing.js";
 import { analyzeSpend } from "./spend.js";
@@ -74,11 +75,17 @@ export async function addDonation(
 
   if ((opts.amount === undefined) === (opts.roundUp !== true)) return no("invalid-options");
 
+  const networkName = opts.network ?? "mainnet";
+  if (!isNetwork(networkName)) return no("invalid-options");
+  const network = NETWORKS[networkName];
+  if (t.networkPassphrase !== network.passphrase) return no("network-mismatch");
+  if (opts.accounts.network !== undefined && opts.accounts.network !== networkName) return no("network-mismatch");
+
   const feeFallback = (BigInt(t.fee) + BigInt(t.operations.length) - 1n) / BigInt(t.operations.length);
   const perOp = perOpFee(opts.baseFee, feeFallback);
   if (perOp === null) return no("invalid-options");
 
-  const spend = analyzeSpend(t.operations);
+  const spend = analyzeSpend(t.operations, network.usdcIssuer);
   if (spend.unsupported) return no("unsupported-operation");
   let amount: bigint | null;
   if (opts.roundUp === true) {
@@ -128,7 +135,7 @@ export async function addDonation(
   builder.addOperation(
     Operation.payment({
       destination: opts.foundation.account,
-      asset: new Asset(USDC_CODE, USDC_ISSUER),
+      asset: new Asset(USDC_CODE, network.usdcIssuer),
       amount: formatStroops(amount),
     }),
   );

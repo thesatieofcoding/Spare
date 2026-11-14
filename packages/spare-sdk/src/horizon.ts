@@ -1,6 +1,7 @@
 import { Horizon } from "@stellar/stellar-sdk";
 import { toStroops } from "./amount.js";
 import { USDC_CODE, USDC_ISSUER } from "./constants.js";
+import { isNetwork, NETWORKS, type Network } from "./network.js";
 import type { AccountPort, AccountSnapshot } from "./ports.js";
 
 /** The subset of Horizon's account record that Spare reads. */
@@ -29,7 +30,7 @@ export interface HorizonAccountRecord {
 const RESERVE_UNIT = 5_000_000n; // 0.5 XLM
 const net = (balance: bigint, liabilities: bigint) => (balance > liabilities ? balance - liabilities : 0n);
 
-export function toAccountSnapshot(r: HorizonAccountRecord): AccountSnapshot {
+export function toAccountSnapshot(r: HorizonAccountRecord, issuer: string = USDC_ISSUER): AccountSnapshot {
   const native = r.balances.find((b) => b.asset_type === "native");
   const reserve = BigInt(2 + r.subentry_count + r.num_sponsoring - r.num_sponsored) * RESERVE_UNIT;
   const nativeNet = net(
@@ -38,7 +39,7 @@ export function toAccountSnapshot(r: HorizonAccountRecord): AccountSnapshot {
   );
 
   const line = r.balances.find(
-    (b) => b.asset_code === USDC_CODE && b.asset_issuer === USDC_ISSUER && b.asset_type !== "native",
+    (b) => b.asset_code === USDC_CODE && b.asset_issuer === issuer && b.asset_type !== "native",
   );
 
   const masterWeight = r.signers.find((s) => s.key === r.account_id)?.weight ?? 0;
@@ -69,17 +70,30 @@ export function toAccountSnapshot(r: HorizonAccountRecord): AccountSnapshot {
   };
 }
 
-/** AccountPort backed by a Horizon server. */
+export interface HorizonAccountPortOptions {
+  /** Default "mainnet". Picks the Horizon URL (unless `horizon` is set) and the USDC issuer. */
+  network?: Network;
+  /** Horizon URL or server; overrides the network's default URL. */
+  horizon?: string | Horizon.Server;
+}
+
+/** AccountPort backed by a Horizon server. A string or Server argument means mainnet. */
 export class HorizonAccountPort implements AccountPort {
+  readonly network: Network;
   private readonly server: Horizon.Server;
-  constructor(horizon: string | Horizon.Server = "https://horizon.stellar.org") {
-    this.server = typeof horizon === "string" ? new Horizon.Server(horizon) : horizon;
+  constructor(arg: string | Horizon.Server | HorizonAccountPortOptions = {}) {
+    const o: HorizonAccountPortOptions = typeof arg === "string" || arg instanceof Horizon.Server ? { horizon: arg } : arg;
+    const network = o.network ?? "mainnet";
+    if (!isNetwork(network)) throw new Error(`unknown network: ${String(network)}`);
+    this.network = network;
+    const h = o.horizon ?? NETWORKS[network].horizonUrl;
+    this.server = typeof h === "string" ? new Horizon.Server(h) : h;
   }
 
   async loadAccount(accountId: string): Promise<AccountSnapshot | null> {
     try {
       const rec = await this.server.accounts().accountId(accountId).call();
-      return toAccountSnapshot(rec as unknown as HorizonAccountRecord);
+      return toAccountSnapshot(rec as unknown as HorizonAccountRecord, NETWORKS[this.network].usdcIssuer);
     } catch (e) {
       if ((e as { response?: { status?: number } }).response?.status === 404) return null;
       throw e;

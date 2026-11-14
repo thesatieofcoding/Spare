@@ -11,10 +11,14 @@ import {
   type xdr,
 } from "@stellar/stellar-sdk";
 import { USDC_ISSUER } from "../src/constants.js";
+import { NETWORKS } from "../src/network.js";
+import type { Network } from "../src/network.js";
 import type { AccountPort, AccountSnapshot, FetchLike } from "../src/ports.js";
 
-export const PASSPHRASE = Networks.TESTNET;
+export const PASSPHRASE = Networks.PUBLIC;
+export const TESTNET_PASSPHRASE = Networks.TESTNET;
 export const USDC = new Asset("USDC", USDC_ISSUER);
+export const TESTNET_USDC = new Asset("USDC", NETWORKS.testnet.usdcIssuer);
 export const FAKE_USDC = new Asset("USDC", Keypair.random().publicKey());
 
 export const DOMAIN = "foundation.example";
@@ -47,7 +51,10 @@ export function snapshot(over: Partial<AccountSnapshot> = {}): AccountSnapshot {
 }
 
 export class FakeAccounts implements AccountPort {
-  constructor(private readonly data = new Map<string, AccountSnapshot | null>()) {}
+  constructor(
+    private readonly data = new Map<string, AccountSnapshot | null>(),
+    readonly network?: Network,
+  ) {}
   set(id: string, s: AccountSnapshot | null): this {
     this.data.set(id, s);
     return this;
@@ -60,8 +67,8 @@ export class FakeAccounts implements AccountPort {
 }
 
 /** Happy-path world: funded user + foundation with an authorized USDC trustline. */
-export function world() {
-  return new FakeAccounts()
+export function world(network?: Network) {
+  return new FakeAccounts(undefined, network)
     .set(user.publicKey(), snapshot())
     .set(merchant.publicKey(), snapshot())
     .set(foundationKp.publicKey(), snapshot({ usdc: line(0n, true) }));
@@ -78,6 +85,7 @@ export interface TxOpts {
   memo?: Memo;
   fee?: string;
   source?: Keypair;
+  passphrase?: string;
 }
 
 export function payUsdc(amount: string, asset: Asset = USDC): xdr.Operation {
@@ -87,10 +95,10 @@ export function payXlm(amount: string): xdr.Operation {
   return Operation.payment({ destination: merchant.publicKey(), asset: Asset.native(), amount });
 }
 
-export function buildTx({ ops = [payUsdc("4.20")], memo, fee = BASE_FEE, source = user }: TxOpts = {}): Transaction {
+export function buildTx({ ops = [payUsdc("4.20")], memo, fee = BASE_FEE, source = user, passphrase = PASSPHRASE }: TxOpts = {}): Transaction {
   const b = new TransactionBuilder(new Account(source.publicKey(), "100"), {
     fee,
-    networkPassphrase: PASSPHRASE,
+    networkPassphrase: passphrase,
   }).setTimeout(60);
   for (const op of ops) b.addOperation(op);
   if (memo) b.addMemo(memo);

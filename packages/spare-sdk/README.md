@@ -11,12 +11,15 @@ pnpm add spare-sdk @stellar/stellar-sdk
 ```ts
 import { addDonation, HorizonAccountPort } from "spare-sdk";
 
+const network = "testnet"; // "mainnet" in production
+
 const result = await addDonation(unsignedTx, {
   foundation: { account: "G...", domain: "foundation.org" }, // must be listed in its stellar.toml
   amount: "0.50",            // or: roundUp: true (only when the purchase is USDC)
   appId: "my-app",           // <= 22 ASCII bytes, memo becomes "spare:my-app"
   maxAmount: "5",            // your cap per donation
-  accounts: new HorizonAccountPort("https://horizon.stellar.org"),
+  accounts: new HorizonAccountPort({ network }),
+  network,
 });
 
 switch (result.status) {
@@ -37,11 +40,20 @@ Only when the whole tx is a Circle-USDC purchase (payments, `pathPaymentStrictSe
 - Already whole (e.g. 5.00): `round-up-already-whole`.
 - `pathPaymentStrictReceive`, XLM or other-asset ops, or unmodelled ops in the same tx: `round-up-needs-usdc-purchase` (the real spend is unknown up front, so Spare never rounds `sendMax`).
 
+### Networks
+
+`network` is `"mainnet"` (default) or `"testnet"` and selects the only accepted Circle USDC issuer:
+
+- mainnet: `GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN`
+- testnet: `GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5`
+
+A tx built for the other network is `not-offered` with `network-mismatch`. Pass the same `network` to `new HorizonAccountPort({ network })` so balances are read from the right Horizon. (`NETWORKS` exports both configs.)
+
 ### Reason codes
 
 `passthrough` (tx untouched): `fee-bump`, `already-signed`, `soroban`, `multiple-sources`, `multisig` (the master key alone cannot meet the tx's threshold: medium, or high with `setOptions`/`accountMerge`), `extra-signers` (CAP-21 `extraSigners` precondition).
 
-`not-offered`: `invalid-options` (incl. malformed `baseFee`), `invalid-app-id`, `invalid-amount`, `invalid-foundation`, `amount-over-cap`, `round-up-needs-usdc-purchase`, `round-up-already-whole`, `foundation-not-verified`, `foundation-trustline-missing`, `foundation-trustline-unauthorized`, `foundation-trustline-full` (no room under the trustline limit), `user-trustline-missing`, `user-trustline-unauthorized`, `unsupported-operation` (the tx has ops that can spend funds in ways Spare does not model, e.g. `manageBuyOffer`, `createClaimableBalance`, `liquidityPoolDeposit`, `accountMerge`), `insufficient-balance` (USDC, or XLM for the fee plus any XLM the tx sends), `account-lookup-failed`, `main-tx-not-successful`, and, from `donateAfter` only, `multisig`.
+`not-offered`: `invalid-options` (incl. malformed `baseFee`), `invalid-app-id`, `invalid-amount`, `invalid-foundation`, `amount-over-cap`, `round-up-needs-usdc-purchase`, `round-up-already-whole`, `foundation-not-verified`, `foundation-trustline-missing`, `foundation-trustline-unauthorized`, `foundation-trustline-full` (no room under the trustline limit), `user-trustline-missing`, `user-trustline-unauthorized`, `unsupported-operation` (the tx has ops that can spend funds in ways Spare does not model, e.g. `manageBuyOffer`, `createClaimableBalance`, `liquidityPoolDeposit`, `accountMerge`), `insufficient-balance` (USDC, or XLM for the fee plus any XLM the tx sends), `network-mismatch` (the tx passphrase is not the one of `network`), `account-lookup-failed`, `main-tx-not-successful`, and, from `donateAfter` only, `multisig`.
 
 ### Memo and SEP-29
 
@@ -61,7 +73,7 @@ import { donateAfter } from "spare-sdk";
 const follow = await donateAfter(
   { successful: true, sourceAccount: userAccount, hash },
   { foundation, amount: "0.50", appId: "my-app", maxAmount: "5",
-    accounts, networkPassphrase: Networks.PUBLIC },
+    accounts, network },
 );
 if (follow.status === "offered") { /* confirm, then sign follow.transaction */ }
 ```

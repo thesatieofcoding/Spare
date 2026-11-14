@@ -2,8 +2,9 @@ import type { Asset, Transaction } from "@stellar/stellar-sdk";
 import { toStroops } from "./amount.js";
 import { USDC_CODE, USDC_ISSUER } from "./constants.js";
 
-export const isCircleUsdc = (a: Asset): boolean =>
-  a.getCode() === USDC_CODE && a.getIssuer() === USDC_ISSUER;
+/** Circle USDC for the selected network (default mainnet). Native has no issuer: never matches. */
+export const isCircleUsdc = (a: Asset, issuer: string = USDC_ISSUER): boolean =>
+  !a.isNative() && a.getCode() === USDC_CODE && a.getIssuer() === issuer;
 
 export interface Spend {
   /** Circle-USDC the tx can spend, stroops (an upper bound for strictReceive). */
@@ -35,11 +36,11 @@ const UNSUPPORTED = new Set([
  * Ops that can spend but are not modelled are flagged `unsupported`; any other unknown op type
  * sets `other` so a purchase is never mistaken for a pure USDC one.
  */
-export function analyzeSpend(ops: Transaction["operations"]): Spend {
+export function analyzeSpend(ops: Transaction["operations"], issuer: string = USDC_ISSUER): Spend {
   const s: Spend = { usdc: 0n, xlm: 0n, other: false, uncertain: false, unsupported: false };
   const add = (asset: Asset, amount: string) => {
     const v = toStroops(amount) ?? 0n;
-    if (isCircleUsdc(asset)) s.usdc += v;
+    if (isCircleUsdc(asset, issuer)) s.usdc += v;
     else {
       s.other = true;
       if (asset.isNative()) s.xlm += v;

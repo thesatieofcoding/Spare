@@ -1,4 +1,5 @@
 import type { FeeBumpTransaction, Transaction } from "@stellar/stellar-sdk";
+import type { Network } from "./network.js";
 import type { AccountPort, FetchLike, Foundation } from "./ports.js";
 
 /** The tx is left untouched: Spare cannot safely modify it. */
@@ -13,6 +14,7 @@ export type PassthroughReason =
 /** The tx is fine but a donation must not be offered. */
 export type NotOfferedReason =
   | "invalid-options"
+  | "network-mismatch"
   | "invalid-app-id"
   | "invalid-amount"
   | "invalid-foundation"
@@ -54,6 +56,12 @@ export type DonationResult =
   | { status: "passthrough"; reason: PassthroughReason; transaction: Transaction | FeeBumpTransaction };
 
 export interface CommonOptions {
+  /**
+   * Network the donation targets: picks the one USDC issuer Spare accepts. Default "mainnet".
+   * The tx passphrase and the account port (when it declares a network) must agree, else
+   * `not-offered` / `network-mismatch`.
+   */
+  network?: Network;
   foundation: Foundation;
   appId: string;
   /** App-set cap per donation, in USDC. */

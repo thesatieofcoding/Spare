@@ -5,7 +5,7 @@ import { vi } from "vitest";
 import type { AccountPort, AccountSnapshot, FetchLike } from "spare-sdk";
 import type { DonationPrompt, SignerLike } from "../src/index.js";
 
-export const PASSPHRASE = Networks.TESTNET;
+export const PASSPHRASE = Networks.PUBLIC; // fixtures use the mainnet USDC issuer
 export const USDC = new Asset("USDC", "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN");
 export const user = Keypair.random();
 export const foundationKp = Keypair.random();

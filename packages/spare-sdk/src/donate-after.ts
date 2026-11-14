@@ -3,9 +3,10 @@ import {
 } from "@stellar/stellar-sdk";
 import { formatStroops, parseUsdc, toStroops } from "./amount.js";
 import { memoFor } from "./app-id.js";
-import { USDC_CODE, USDC_ISSUER } from "./constants.js";
+import { USDC_CODE } from "./constants.js";
 import { checkEligibility } from "./eligibility.js";
 import { perOpFee } from "./fee.js";
+import { isNetwork, NETWORKS } from "./network.js";
 import { canSignAlone } from "./signing.js";
 import type { AccountSnapshot } from "./ports.js";
 import type { CommonOptions, DonationInfo, NotOfferedReason } from "./types.js";
@@ -21,7 +22,11 @@ export interface MainTxResult {
 export type DonateAfterOptions = CommonOptions & {
   /** Fixed amount in USDC. Round-up is not available on this path. */
   amount: string;
-  networkPassphrase: string;
+  /**
+   * @deprecated Derived from `network`. If given, it must equal that network's passphrase,
+   * else `not-offered` / `network-mismatch`.
+   */
+  networkPassphrase?: string | undefined;
   /** Seconds the follow-up tx stays valid. Default 300. */
   timeoutSeconds?: number;
 };
@@ -48,6 +53,12 @@ export async function donateAfter(
 ): Promise<DonateAfterResult> {
   const no = (reason: NotOfferedReason): DonateAfterResult => ({ status: "not-offered", reason });
   if (!result.successful) return no("main-tx-not-successful");
+
+  const networkName = opts.network ?? "mainnet";
+  if (!isNetwork(networkName)) return no("invalid-options");
+  const network = NETWORKS[networkName];
+  if (opts.networkPassphrase !== undefined && opts.networkPassphrase !== network.passphrase) return no("network-mismatch");
+  if (opts.accounts.network !== undefined && opts.accounts.network !== networkName) return no("network-mismatch");
 
   const amount = parseUsdc(opts.amount);
   if (amount === null) return no("invalid-amount");
@@ -82,13 +93,13 @@ export async function donateAfter(
 
   const tx = new TransactionBuilder(new Account(result.sourceAccount, user.sequence), {
     fee: baseFee.toString(),
-    networkPassphrase: opts.networkPassphrase,
+    networkPassphrase: network.passphrase,
     memo: Memo.text(memoFor(opts.appId)),
   })
     .addOperation(
       Operation.payment({
         destination: opts.foundation.account,
-        asset: new Asset(USDC_CODE, USDC_ISSUER),
+        asset: new Asset(USDC_CODE, network.usdcIssuer),
         amount: formatStroops(amount),
       }),
     )

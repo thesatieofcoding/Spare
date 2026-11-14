@@ -1,6 +1,6 @@
 import { Operation, TransactionBuilder } from "@stellar/stellar-sdk";
 import { describe, expect, it } from "vitest";
-import { donateAfter, type DonateAfterOptions } from "../src/index.js";
+import { donateAfter, NETWORKS, type DonateAfterOptions } from "../src/index.js";
 import {
   FOUNDATION, line, memoText, PASSPHRASE, USDC, foundationKp, snapshot, stroops, tomlFetch, user, verifiedFetch, world,
 } from "./helpers.js";
@@ -88,5 +88,39 @@ describe("donateAfter (Soroban follow-up)", () => {
     if (r.status !== "offered") throw new Error();
     const again = TransactionBuilder.fromXDR(r.transaction.toXDR(), PASSPHRASE);
     expect(again.toXDR()).toBe(r.transaction.toXDR());
+  });
+
+  describe("network option", () => {
+    const testnet = (over: Partial<DonateAfterOptions> = {}) =>
+      base({ network: "testnet", networkPassphrase: undefined, accounts: world("testnet"), ...over });
+
+    it("testnet builds the follow-up with the testnet issuer, memo and second signature (S1.8)", async () => {
+      const r = await donateAfter(success, testnet());
+      if (r.status !== "offered") throw new Error(r.reason);
+      const op = r.transaction.operations[0] as Operation.Payment;
+      expect(op.asset.getIssuer()).toBe(NETWORKS.testnet.usdcIssuer);
+      expect(r.transaction.networkPassphrase).toBe(NETWORKS.testnet.passphrase);
+      expect(memoText(r.transaction)).toBe("spare:demo-app");
+      expect(r.requiresSecondSignature).toBe(true);
+    });
+
+    it("networkPassphrase is optional: omitted defaults to mainnet's", async () => {
+      const r = await donateAfter(success, base({ networkPassphrase: undefined }));
+      if (r.status !== "offered") throw new Error(r.reason);
+      expect(r.transaction.networkPassphrase).toBe(NETWORKS.mainnet.passphrase);
+    });
+
+    it("a passphrase that disagrees with the network is network-mismatch", async () => {
+      expect(await donateAfter(success, testnet({ networkPassphrase: PASSPHRASE }))).toEqual({ status: "not-offered", reason: "network-mismatch" });
+      expect(await donateAfter(success, base({ networkPassphrase: NETWORKS.testnet.passphrase }))).toEqual({ status: "not-offered", reason: "network-mismatch" });
+    });
+
+    it("an account port bound to another network is network-mismatch", async () => {
+      expect(await donateAfter(success, testnet({ accounts: world("mainnet") }))).toEqual({ status: "not-offered", reason: "network-mismatch" });
+    });
+
+    it("unknown network at runtime is not-offered, never throws", async () => {
+      expect(await donateAfter(success, base({ network: "devnet" as never }))).toEqual({ status: "not-offered", reason: "invalid-options" });
+    });
   });
 });
