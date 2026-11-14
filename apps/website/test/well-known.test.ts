@@ -62,6 +62,10 @@ describe("build-time foundation guard", () => {
     const cfg = createDemoConfig({ PUBLIC_SPARE_MAINNET_FOUNDATION: OTHER });
     expect(() => assertFoundationsInToml(cfg, toml)).toThrow(/mainnet foundation .* not in .*ACCOUNTS/);
   });
+  it("the demo page runs the guard at build", () => {
+    const page = readFileSync(new URL("../src/pages/[lang]/demo.astro", import.meta.url), "utf8");
+    expect(page).toContain("assertFoundationsInToml");
+  });
 });
 
 describe("vercel.json headers for stellar.toml", () => {

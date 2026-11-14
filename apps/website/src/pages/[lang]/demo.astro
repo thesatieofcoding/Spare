@@ -1,0 +1,275 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { LANGS, getMessages, type Lang } from "../../i18n/utils";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { demoConfig } from "../../demo/config";
+import { assertFoundationsInToml } from "../../demo/foundation-guard";
+
+export function getStaticPaths() {
+  return LANGS.map((lang) => ({ params: { lang } }));
+}
+
+// Build-time: a configured foundation missing from stellar.toml would silently offer nothing.
+assertFoundationsInToml(demoConfig, readFileSync(join(process.cwd(), "public", ".well-known", "stellar.toml"), "utf8"));
+
+const lang = Astro.params.lang as Lang;
+const t = getMessages(lang);
+const d = t.demo;
+const networks = [
+  { id: "testnet", label: d.testnet },
+  { id: "mainnet", label: d.mainnet },
+] as const;
+---
+
+<BaseLayout lang={lang} title={`${t.pages.demo} — Spare`}>
+  <section class="demo container" data-demo>
+    <header class="intro">
+      <p class="eyebrow">{d.eyebrow}</p>
+      <h1 class="h2">{d.title}</h1>
+      <p class="lead">{d.lead}</p>
+      <p class="badge">{d.badge}</p>
+    </header>
+
+    <fieldset class="networks">
+      <legend>{d.networkLabel}</legend>
+      {
+        networks.map((n) => (
+          <label class="net">
+            <input type="radio" name="network" value={n.id} data-network checked={n.id === "testnet"} />
+            <span>{n.label}</span>
+          </label>
+        ))
+      }
+    </fieldset>
+
+    <p class="note" data-not-configured hidden></p>
+
+    <div class="card">
+      <div class="row">
+        <button type="button" class="btn btn--primary" data-connect>{d.connect}</button>
+        <p class="who" data-connected hidden></p>
+        <button type="button" class="btn btn--secondary" data-disconnect hidden>{d.disconnect}</button>
+      </div>
+      <p class="note" data-purchase></p>
+      <p class="note">{d.ledgerHint}</p>
+    </div>
+
+    <div class="flows">
+      <article class="card">
+        <h2 class="h4">{d.classic.title}</h2>
+        <p>{d.classic.body}</p>
+        <button type="button" class="btn btn--secondary" data-flow="classic" disabled>{d.classic.button}</button>
+      </article>
+      <article class="card">
+        <h2 class="h4">{d.soroban.title}</h2>
+        <p>{d.soroban.body}</p>
+        <p class="notice">{d.soroban.notice}</p>
+        <p class="note" data-soroban-note hidden></p>
+        <button type="button" class="btn btn--secondary" data-flow="soroban" disabled>{d.soroban.button}</button>
+      </article>
+    </div>
+
+    <div class="card result" data-tone="neutral" data-result>
+      <p role="status" aria-live="polite" data-status tabindex="-1" class="status">{d.status.idle}</p>
+      <p class="note" data-detail hidden></p>
+      <ul class="links">
+        <li><a data-link="0" href="#" target="_blank" rel="noopener noreferrer" hidden></a></li>
+        <li><a data-link="1" href="#" target="_blank" rel="noopener noreferrer" hidden></a></li>
+      </ul>
+      <div class="row">
+        <button type="button" class="btn btn--secondary" data-retry hidden>{d.retry}</button>
+        <button type="button" class="btn btn--secondary" data-again hidden>{d.again}</button>
+      </div>
+    </div>
+
+    <p class="note">{d.privacy}</p>
+
+    <script type="application/json" id="demo-copy" set:html={JSON.stringify(d)} />
+  </section>
+</BaseLayout>
+
+<script>
+  import "../../demo/main";
+</script>
+
+<style>
+  .demo {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    padding-block: var(--space-12) var(--space-20);
+  }
+  .intro {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    max-width: 720px;
+  }
+  .lead,
+  .card p,
+  .note {
+    font-size: 16px;
+    line-height: 24px;
+  }
+  .lead,
+  .note {
+    color: var(--text-secondary);
+  }
+  .badge {
+    align-self: flex-start;
+    padding: var(--space-2) var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-8);
+    background: var(--bg-subtle);
+    color: var(--text-primary);
+    font-size: 14px;
+    line-height: 20px;
+  }
+  .networks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    border: 0;
+    padding: 0;
+  }
+  .networks legend {
+    margin-bottom: var(--space-2);
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+  .net {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 44px;
+    padding-inline: var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    font-size: 14px;
+    line-height: 20px;
+    cursor: pointer;
+  }
+  .net:has(input:checked) {
+    border-color: var(--accent);
+    background: var(--bg-subtle);
+  }
+  .net input {
+    accent-color: var(--accent);
+  }
+  .card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
+    padding: var(--space-6);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-16);
+    background: var(--surface);
+    color: var(--text-primary);
+  }
+  .h4 {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    font-size: 22px;
+    line-height: 28px;
+  }
+  .flows {
+    display: grid;
+    gap: var(--space-6);
+  }
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-4);
+  }
+  .who {
+    font-weight: 500;
+  }
+  .notice {
+    padding: var(--space-3) var(--space-4);
+    border-left: 3px solid var(--accent);
+    background: var(--bg-subtle);
+    border-radius: var(--radius-8);
+  }
+  .status {
+    font-family: var(--font-serif);
+    font-size: 22px;
+    line-height: 28px;
+  }
+  .result[data-tone="success"] {
+    border-color: var(--accent);
+  }
+  .result[data-tone="error"] {
+    border-color: var(--error);
+  }
+  .result[data-tone="error"] .status {
+    color: var(--error);
+  }
+  .links {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    list-style: none;
+    padding: 0;
+  }
+  .links a {
+    color: var(--text-accent);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    font-size: 14px;
+    line-height: 20px;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: var(--space-3) var(--space-5);
+    border: 1px solid transparent;
+    border-radius: var(--radius-full);
+    font-family: var(--font-sans);
+    font-weight: 500;
+    font-size: 14px;
+    line-height: 20px;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+  }
+  .btn--primary {
+    background: var(--accent);
+    color: var(--on-accent);
+  }
+  .btn--primary:hover:not(:disabled) {
+    background: var(--accent-hover);
+  }
+  .btn--secondary {
+    background: transparent;
+    border-color: var(--border);
+    color: var(--text-primary);
+  }
+  .btn--secondary:hover:not(:disabled) {
+    background: var(--bg-subtle);
+  }
+  .btn:disabled {
+    cursor: not-allowed;
+    color: var(--text-secondary);
+    background: var(--bg-page);
+  }
+  [hidden] {
+    display: none !important;
+  }
+  @media (min-width: 768px) {
+    .demo {
+      padding-block: var(--space-16) var(--space-24);
+    }
+    .flows {
+      grid-template-columns: 1fr 1fr;
+    }
+    .card {
+      padding: var(--space-8);
+    }
+  }
+</style>

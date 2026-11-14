@@ -92,6 +92,7 @@
   --on-inverse: var(--cream-75);
   --mark: var(--neutral-800);
   --focus-ring: var(--salvia-700);
+  --error: var(--error-500);
 }
 
 /* ---- Semantic: Dark. Applied for explicit data-theme="dark", or when the OS
@@ -121,6 +122,7 @@
     --on-inverse: var(--neutral-800);
     --mark: var(--cream-100);
     --focus-ring: var(--salvia-500);
+    --error: var(--error-300);
   }
 }
 
@@ -148,6 +150,7 @@
   --on-inverse: var(--neutral-800);
   --mark: var(--cream-100);
   --focus-ring: var(--salvia-500);
+  --error: var(--error-300);
 }
 
 @media (min-width: 900px) {

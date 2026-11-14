@@ -43,8 +43,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm -C apps/website check
-      - run: pnpm -C apps/website test
       - run: pnpm -C apps/website build
+      - run: pnpm -C apps/website test
   examples:
     runs-on: ubuntu-latest
     steps:

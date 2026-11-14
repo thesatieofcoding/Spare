@@ -3,10 +3,10 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import TextLink from "../../components/TextLink.astro";
 import { LANGS, getMessages, localizePath, type Lang } from "../../i18n/utils";
 
-type PageKey = "foundations" | "dashboard" | "demo";
+type PageKey = "foundations" | "dashboard";
 
 export function getStaticPaths() {
-  const pages: PageKey[] = ["foundations", "dashboard", "demo"];
+  const pages: PageKey[] = ["foundations", "dashboard"];
   return LANGS.flatMap((lang) => pages.map((page) => ({ params: { lang, page } })));
 }
 
