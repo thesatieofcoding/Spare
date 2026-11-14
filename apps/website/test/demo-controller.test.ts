@@ -25,6 +25,7 @@ interface Opts {
   followUp?: SpareSigner["offerFollowUp"];
   lookup?: (x: string) => Promise<{ hash: string } | null>;
   ledger?: number;
+  followUpWindowMs?: number;
   cfg?: DemoConfig;
 }
 
@@ -63,6 +64,9 @@ function setup(o: Opts = {}) {
   const c = createController({
     config: o.cfg ?? config(), loadPorts, initialNetwork: "testnet",
     sleep: async () => {}, pollIntervalMs: 0, maxPolls: 3,
+    // Fake clock: every read advances 1 s, so the follow-up window elapses without real waiting.
+    now: (() => { let t = 0; return () => (t += 1000); })(),
+    ...(o.followUpWindowMs !== undefined && { followUpWindowMs: o.followUpWindowMs }),
   });
   const states: DemoState[] = [];
   c.subscribe((s) => states.push(s));
@@ -289,6 +293,22 @@ describe("soroban flow", () => {
       await t.c.start("soroban");
       expect(lookup).toHaveBeenCalledTimes(3);
       expect(t.c.getState()).toMatchObject({ status: "done", result: { donationHash: "HLATE", outcome: "donated" } });
+    });
+    it("keeps polling until the follow-up's own timebound has passed, so a late landing is not reported as failed", async () => {
+      let n = 0;
+      const lookup = vi.fn(async () => (++n < 100 ? null : { hash: "HVERYLATE" }));
+      const t = await ready({ horizonSubmit: timeout(), lookup });
+      await t.c.start("soroban");
+      expect(lookup).toHaveBeenCalledTimes(100);
+      expect(t.c.getState()).toMatchObject({ status: "done", result: { donationHash: "HVERYLATE", outcome: "donated" } });
+    });
+    it("gives up (follow-up-failed) only once the window has elapsed", async () => {
+      const lookup = vi.fn(async () => null);
+      const t = await ready({ horizonSubmit: timeout(), lookup, followUpWindowMs: 10_000 });
+      await t.c.start("soroban");
+      expect(lookup.mock.calls.length).toBeGreaterThan(3);
+      expect(lookup.mock.calls.length).toBeLessThan(15);
+      expect(t.c.getState()).toMatchObject({ status: "done", result: { outcome: "follow-up-failed" } });
     });
     it("reports follow-up-failed when it never landed or the lookup itself fails", async () => {
       for (const lookup of [vi.fn(async () => null), vi.fn(async () => { throw new Error("down"); })]) {

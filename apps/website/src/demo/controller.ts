@@ -27,6 +27,13 @@ export interface ControllerOptions {
   sleep?(ms: number): Promise<void>;
   pollIntervalMs?: number;
   maxPolls?: number;
+  /**
+   * How long a follow-up tx can still land: its timebound (SDK default 300 s) plus slack. A lookup
+   * after an uncertain submit polls this long before the demo calls it failed.
+   */
+  followUpWindowMs?: number;
+  /** Injectable clock (tests). Defaults to Date.now. */
+  now?(): number;
 }
 
 export interface DemoController {
@@ -51,6 +58,9 @@ export function createController(opts: ControllerOptions): DemoController {
   const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
   const pollIntervalMs = opts.pollIntervalMs ?? 2000;
   const maxPolls = opts.maxPolls ?? 30;
+  const followUpWindowMs = opts.followUpWindowMs ?? 315_000;
+  const now = opts.now ?? Date.now;
+  const MAX_BACKOFF_MS = 10_000;
 
   let state: DemoState = initialState(opts.initialNetwork ?? "testnet");
   let ports: NetworkPorts | null = null;
@@ -96,21 +106,27 @@ export function createController(opts: ControllerOptions): DemoController {
     return value;
   }
 
-  /** Asks Horizon whether a submitted tx landed. Polls only when the submit outcome is unknown. */
+  /**
+   * Asks Horizon whether a submitted tx landed. Polls only when the submit outcome is unknown, and
+   * then until the tx's own timebound has passed (it cannot land after that), backing off to 10 s.
+   * A tx that lands late is "donated", not "failed".
+   */
   async function findLanded(p: NetworkPorts, signedXdr: string, uncertain: boolean): Promise<{ hash: string } | null> {
     const lookup = p.horizon.lookup;
     if (!lookup) return null;
-    const rounds = uncertain ? 5 : 1;
-    for (let i = 0; i < rounds; i++) {
+    const deadline = now() + followUpWindowMs;
+    let delay = pollIntervalMs;
+    for (;;) {
       try {
         const found = await lookup.call(p.horizon, signedXdr);
         if (found) return found;
       } catch {
         return null; // cannot tell: report the original failure
       }
-      if (i + 1 < rounds) await sleep(pollIntervalMs);
+      if (!uncertain || now() >= deadline) return null;
+      await sleep(delay);
+      delay = Math.min(Math.ceil(delay * 1.5), MAX_BACKOFF_MS);
     }
-    return null;
   }
 
   async function connect(): Promise<void> {
