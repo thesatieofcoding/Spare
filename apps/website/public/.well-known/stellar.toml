@@ -1,0 +1,14 @@
+# SEP-1 stellar.toml for the Spare demo. The demo foundation is operated by the
+# Spare builder; demo donations go back to the builder. It is not a real charity.
+# One file serves both networks. The mainnet foundation account is added to
+# ACCOUNTS when it is provided (see PUBLIC_SPARE_MAINNET_FOUNDATION).
+VERSION = "2.0.0"
+
+ACCOUNTS = [
+  "GCAEBBLSVFM2RLNBYMEZLFWHCXFHOGVJAXQK2K3WVHS2UGVDVWJOXGQJ",
+]
+
+[DOCUMENTATION]
+ORG_NAME = "Spare demo foundation"
+ORG_URL = "https://spare-vert.vercel.app"
+ORG_DESCRIPTION = "Demo foundation for the Spare micro-donation kit. Demo donations return to the Spare builder; this is not a real charity."

@@ -1,8 +1,22 @@
 {
   "extends": "astro/tsconfigs/strictest",
-  "include": [".astro/types.d.ts", "src/**/*", "test/**/*"],
-  "exclude": ["dist"],
+  "include": [
+    ".astro/types.d.ts",
+    "src/**/*",
+    "test/**/*"
+  ],
+  "exclude": [
+    "dist"
+  ],
   "compilerOptions": {
-    "verbatimModuleSyntax": true
+    "verbatimModuleSyntax": true,
+    "paths": {
+      "spare-sdk": [
+        "../../packages/spare-sdk/src/index.ts"
+      ],
+      "spare-wallets-kit": [
+        "../../packages/spare-wallets-kit/src/index.ts"
+      ]
+    }
   }
 }
