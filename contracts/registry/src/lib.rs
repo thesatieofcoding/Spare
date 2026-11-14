@@ -82,7 +82,7 @@ fn validate_name(name: &String) -> Result<(), Error> {
 const MAX_LABEL_BYTES: usize = 63;
 
 /// Lowercase ASCII hostname: 1..=253 bytes, only `a-z 0-9 . -`, at least two
-/// labels separated by `.`, each label 1..=63 bytes and not starting or ending
+/// labels separated by `.` (the last one letters only, 2..=63), each label 1..=63 bytes and not starting or ending
 /// with `-`. Rejects schemes, paths, ports, queries, userinfo, uppercase and
 /// non-ASCII, so each domain has exactly one stored form.
 fn validate_website(website: &String) -> Result<(), Error> {
@@ -95,6 +95,12 @@ fn validate_website(website: &String) -> Result<(), Error> {
     website.copy_into_slice(buf);
     let allowed = |b: &u8| b.is_ascii_lowercase() || b.is_ascii_digit() || *b == b'.' || *b == b'-';
     if !buf.iter().all(allowed) || !buf.contains(&b'.') {
+        return Err(Error::InvalidWebsite);
+    }
+    // The final label (TLD) is 2..=63 letters: rejects IPv4 literals and
+    // numeric or punycode TLDs (parity with the SDK hostname rule).
+    let tld = buf.rsplit(|b| *b == b'.').next().unwrap_or(&[]);
+    if tld.len() < 2 || !tld.iter().all(u8::is_ascii_lowercase) {
         return Err(Error::InvalidWebsite);
     }
     for label in buf.split(|b| *b == b'.') {

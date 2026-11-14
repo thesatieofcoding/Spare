@@ -308,11 +308,43 @@ fn website_must_be_lowercase_hostname() {
     let a = Address::generate(&env);
     assert_eq!(c.try_register(&a, &n, &s(&env, &long_label)), Err(Ok(Error::InvalidWebsite)));
     c.register(&a, &n, &s(&env, &max_label));
-    for good in ["uno.org", "demo.donatespare.xyz", "my-ngo.co.ke", "123.example"] {
+    for good in ["uno.org", "demo.donatespare.xyz", "my-ngo.co.ke", "123.example", "foundation.org"] {
         let a = Address::generate(&env);
         c.register(&a, &n, &s(&env, good));
         assert!(c.is_active(&a), "website {good:?} should be accepted");
     }
+}
+
+#[test]
+fn website_rejects_ip_literals_and_numeric_tld() {
+    let (env, c, _) = setup();
+    env.mock_all_auths();
+    let n = s(&env, "Uno");
+    for bad in [
+        "192.168.0.1", "1.2.3.4", "10.0.0.1", "example.123", "uno.org1", "uno.o", "uno.xn--p1ai",
+        "[::1]", "::1", "uno.a1", "uno.1a",
+    ] {
+        let a = Address::generate(&env);
+        assert_eq!(
+            c.try_register(&a, &n, &s(&env, bad)),
+            Err(Ok(Error::InvalidWebsite)),
+            "website {bad:?} should be rejected"
+        );
+    }
+    let a = Address::generate(&env);
+    c.register(&a, &n, &s(&env, "uno.org"));
+    for bad in ["192.168.0.1", "example.123"] {
+        assert_eq!(
+            c.try_update(&a, &n, &s(&env, bad)),
+            Err(Ok(Error::InvalidWebsite)),
+            "update to {bad:?} should be rejected"
+        );
+    }
+    let tld63 = std::format!("uno.{}", "a".repeat(63));
+    let tld64 = std::format!("uno.{}", "a".repeat(64));
+    c.update(&a, &n, &s(&env, &tld63));
+    assert_eq!(c.try_update(&a, &n, &s(&env, &tld64)), Err(Ok(Error::InvalidWebsite)));
+    c.update(&a, &n, &s(&env, "foundation.org"));
 }
 
 #[test]
