@@ -81,6 +81,8 @@ export async function addDonation(
   if (t.networkPassphrase !== network.passphrase) return no("network-mismatch");
   if (opts.accounts.network !== undefined && opts.accounts.network !== networkName) return no("network-mismatch");
 
+  if (t.operations.length === 0) return no("invalid-options"); // nothing to price a fee from
+
   const feeFallback = (BigInt(t.fee) + BigInt(t.operations.length) - 1n) / BigInt(t.operations.length);
   const perOp = perOpFee(opts.baseFee, feeFallback);
   if (perOp === null) return no("invalid-options");
