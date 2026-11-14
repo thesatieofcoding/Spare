@@ -55,6 +55,20 @@ switch (result.status) {
   case "passthrough":  // signed / fee-bump / multisig / extra signers / Soroban: sign the original tx
 }`;
 
+export const payWithXlmSnippet = `import { addDonation, HorizonAccountPort, HorizonPathQuotePort } from "spare-sdk";
+
+const result = await addDonation(unsignedTx, {
+  foundation, amount: "0.25", appId: "my-app", maxAmount: "5",
+  accounts: new HorizonAccountPort({ network }),
+  network,
+  payWith: "xlm",                                // donor spends XLM...
+  quotes: new HorizonPathQuotePort({ network }), // ...priced via Horizon /paths/strict-receive
+  slippageBps: 200,                              // sendMax = quote + 2% (the default)
+});
+if (result.status === "offered") {
+  // the foundation receives exactly 0.25 USDC; show "≈ <result.donation.sendMax> XLM max"
+}`;
+
 export const donateAfterSnippet = `import { donateAfter } from "spare-sdk";
 
 const follow = await donateAfter(

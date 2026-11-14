@@ -5,6 +5,32 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- `spare-sdk`: pay the donation in XLM. `payWith: "xlm"` with a `quotes` port (`PathQuotePort`) builds a
+  `pathPaymentStrictReceive` (send XLM, receive exactly the amount in Circle USDC) instead of a USDC payment, for
+  both `addDonation` and `donateAfter`. `sendMax` = quote + `slippageBps` (default 200 = 2%, integer 0-1000, rounded
+  up). The donor needs no USDC trustline; XLM above the minimum reserve must cover `sendMax`, the fee and any XLM the
+  tx sends. The foundation checks are unchanged (authorized Circle-USDC trustline, domain-verified). New reason
+  `no-path` (no path, failed quote, or a path longer than 5 hops). `HorizonPathQuotePort` quotes through Horizon
+  `/paths/strict-receive` with `source_assets=native`. `DonationInfo` gains `payWith` and, for XLM, `sendMax(Stroops)`
+  and `quotedXlm(Stroops)`. Exports `xlmSendMax`, `DEFAULT_SLIPPAGE_BPS`, `MAX_SLIPPAGE_BPS`, `PayWith`.
+- `spare-wallets-kit`: the donor chooses the amount and pay asset. Presets (`presets`, default US$0.10 / 0.25 / 0.50,
+  smallest preselected), an "other amount" field (US$0.01 up to `maxAmount`), round-up only for USDC purchases, and an
+  XLM/USDC toggle with "≈ N XLM max" when `quotes` is set (`payWith` picks the preselected asset). Each change is
+  re-checked; ineligible options are disabled. Custom `confirm` functions get `prompt.choices`
+  (`check` / `select`). EN + ES strings.
+- Demo: the purchase defaults to XLM (USDC selectable), the donation defaults to XLM, and the Soroban flow transfers
+  through the native XLM Stellar Asset Contract, so a wallet holding only XLM can run both flows on testnet.
+- Testnet E2E: XLM-paid classic and Soroban donations from an account with no USDC trustline, custom amounts, and a
+  check that the path payment is listed in Horizon `/accounts/{foundation}/payments`.
+
+### Changed (behavior / migration)
+
+1. `spare-wallets-kit`: `mode` is optional (default: the smallest preset). An existing `mode: { amount }` still
+   preselects that amount and is added to the presets, so a `confirm` that ignores `choices` behaves as before.
+2. `DonationInfo.payWith` is a new required field (always `"usdc"` unless you opt in to XLM).
+
 ## [0.1.3] - 2026-11-14
 
 ### Added

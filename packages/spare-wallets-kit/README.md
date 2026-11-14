@@ -122,9 +122,13 @@ if (follow.status === "signed") await submit(follow.signedTxXdr); // submitting 
 | --- | --- | --- |
 | `foundation` | yes | `{ account, domain }`. Domain-verified through SEP-1 `stellar.toml`. |
 | `foundationName` | no | Name shown to the user. Defaults to the domain. |
-| `mode` | yes | `{ amount: "0.50" }` or `{ roundUp: true }` (USDC purchases only). |
+| `mode` | no | Preselected donation: `{ amount: "0.50" }` or `{ roundUp: true }` (USDC purchases only). Default: the smallest preset. A fixed amount joins the presets. |
+| `presets` | no | Amounts in US$ offered in the confirmation step. Default `["0.10", "0.25", "0.50"]`; values below US$0.01 or above `maxAmount` are dropped. |
+| `quotes` | no | A `PathQuotePort` (e.g. `new HorizonPathQuotePort({ network })`). Enables paying the donation in XLM; the foundation still receives USDC. |
+| `payWith` | no | `"usdc"` (default) or `"xlm"`: the asset preselected when it can pay. With `"usdc"`, XLM is preselected only when USDC cannot pay. The donor can switch. |
+| `slippageBps` | no | XLM margin over the quote, basis points (0-1000, default 200). |
 | `appId` | yes | Tag for the `spare:<appId>` memo. |
-| `maxAmount` | yes | Your cap per donation, in USDC. |
+| `maxAmount` | yes | Your cap per donation, in US$. Also the most a donor can enter. |
 | `accounts` | yes | `AccountPort` from spare-sdk (e.g. `HorizonAccountPort`). |
 | `fetch` | no | Custom fetch for `stellar.toml` lookups. |
 | `network` | no | `"mainnet"` (default) or `"testnet"`. Selects the Circle USDC issuer; a tx from another network is signed unchanged. When omitted, it is inferred from the effective `networkPassphrase` (the call's, else the option's) if that is the testnet or mainnet passphrase; an unknown passphrase infers nothing. An explicit `network` always wins. |
@@ -132,9 +136,26 @@ if (follow.status === "signed") await submit(follow.signedTxXdr); // submitting 
 | `confirm` | no | `(prompt: DonationPrompt) => Promise<boolean>`. Replaces the built-in modal. |
 | `locale` / `theme` | no | `"en" \| "es"`; `"light" \| "dark" \| "auto"` for the built-in modal. |
 | `wallet` | no | Wallet id (or getter). Defaults to `kit.selectedModule.productId`. `LEDGER` shows the "check your Ledger" note. |
-| `followUpAmount` | no | Soroban follow-up amount. Defaults to the fixed `mode.amount`; required with round-up. |
+| `followUpAmount` | no | Soroban follow-up amount. Defaults to the fixed `mode.amount`, or the smallest preset; required with round-up. |
 
-`DonationPrompt`: `{ amount, foundationName, foundationDomain, mode: "fixed" | "round-up", wallet: "classic" | "soroban" | "ledger", locale, secondSignature, purchaseTotal?, roundUpTotal? }`. `purchaseTotal` and `roundUpTotal` come straight from spare-sdk's `donation.purchase` / `donation.roundedTotal`.
+`DonationPrompt`: `{ amount, payWith?, xlmSendMax?, foundationName, foundationDomain, mode: "fixed" | "round-up", wallet: "classic" | "soroban" | "ledger", locale, secondSignature, purchaseTotal?, roundUpTotal?, choices? }`. `purchaseTotal` and `roundUpTotal` come straight from spare-sdk's `donation.purchase` / `donation.roundedTotal`.
+
+## Amount and pay-asset choices
+
+The built-in modal lets the donor pick a preset, type another amount (US$0.01 up to `maxAmount`), choose round-up (USDC purchases only) and, with `quotes`, pay in XLM or USDC ("≈ N XLM max"). Every change is re-checked with the same spare-sdk rules (accounts, `stellar.toml` and quotes are read once per prompt and reused); options that cannot pay are disabled, and confirm stays disabled until the current pick is eligible. Nothing is added without an explicit yes.
+
+A custom `confirm` gets the same in `prompt.choices`: `{ presets, min, max, roundUp, payWith, selected, check(choice), select(choice) }`, where a choice is `{ amount, payWith }` or `{ roundUp: true, payWith }`. `check` only evaluates; `select` makes the choice the one signed when you return `true`, and if the latest selection is not eligible, `true` counts as declined. Ignore `choices` and the preselected donation is signed, as before.
+
+```ts
+const spare = withSpare(kit, {
+  foundation, appId: "my-app", maxAmount: "5", accounts, network,
+  quotes: new HorizonPathQuotePort({ network }), // from spare-sdk
+  confirm: async (p) => {
+    const r = await p.choices!.select({ amount: "0.25", payWith: "xlm" });
+    return r.status === "offered" && (await askUser(r)); // your UI
+  },
+});
+```
 
 ## Pass-through rules
 
@@ -145,6 +166,6 @@ if (follow.status === "signed") await submit(follow.signedTxXdr); // submitting 
 
 ## Built-in modal
 
-Matches the Figma "Confirmation modal". `role="dialog"`, `aria-modal`, labelled title, focus trap, Esc skips, focus returns to the opener, `prefers-reduced-motion` respected. It shows "Domain-verified: <domain>" (ES "Dominio verificado: ...") under the title: the foundation's `stellar.toml` lists its account, nothing more. Focus starts on the dialog, not on a button, the primary button ignores activation for the first 400 ms, and the rest of the page is `inert` while it is open. Styles live in a shadow root. Fonts (Instrument Sans, Newsreader) are not bundled: load them yourself or the system fallbacks apply.
+Matches the Figma "Confirmation modal". Amounts and pay assets are native radio groups in labelled fieldsets, the other-amount field has a visible label and `aria-invalid`, and a polite live region reports "Checking…" and errors. `role="dialog"`, `aria-modal`, labelled title, focus trap, Esc skips, focus returns to the opener, `prefers-reduced-motion` respected. It shows "Domain-verified: <domain>" (ES "Dominio verificado: ...") under the title: the foundation's `stellar.toml` lists its account, nothing more. Focus starts on the dialog, not on a button, the primary button ignores activation for the first 400 ms, and the rest of the page is `inert` while it is open. Styles live in a shadow root. Fonts (Instrument Sans, Newsreader) are not bundled: load them yourself or the system fallbacks apply.
 
 See [spare-sdk](../spare-sdk) for the core API.

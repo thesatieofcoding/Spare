@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   INSTALL_COMMAND, INSTALL_NPM, INSTALL_YARN, addDonationSnippet, donateAfterSnippet, kitSnippet, signWithDonationSnippet,
-  soroban, testnetDonateSnippet, testnetFundSnippet,
+  payWithXlmSnippet, soroban, testnetDonateSnippet, testnetFundSnippet,
 } from "../src/lib/docs-snippets";
 
 const rootReadme = readFileSync(new URL("../../../README.md", import.meta.url), "utf8");
@@ -56,6 +56,14 @@ describe("docs snippets stay in sync with the published API", () => {
     const edited = quickstart.replace('appId: "my-app"', 'appId: "other-app"');
     const m = edited.match(/^\/\/ #region quickstart\n([\s\S]*?)\n\/\/ #endregion quickstart$/m);
     expect(m![1]).not.toBe(kitSnippet("en"));
+  });
+  it("pay-with-XLM snippet uses the exported quote port and options", async () => {
+    const sdk = await import("spare-sdk");
+    expect(typeof sdk.HorizonPathQuotePort).toBe("function");
+    for (const s of ['payWith: "xlm"', "quotes: new HorizonPathQuotePort({ network })", "slippageBps: 200", "network,"]) {
+      expect(payWithXlmSnippet).toContain(s);
+    }
+    expect(sdk.DEFAULT_SLIPPAGE_BPS).toBe(200);
   });
   it("addDonation and donateAfter snippets use the network option, not URLs or passphrases", () => {
     for (const s of [addDonationSnippet, donateAfterSnippet]) {
