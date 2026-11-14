@@ -8,7 +8,6 @@ export default defineConfig({
   site: "https://donatespare.xyz",
   output: "static",
   trailingSlash: "always",
-  redirects: { "/": "/en/" },
   vite: {
     resolve: {
       alias: {
@@ -20,6 +19,6 @@ export default defineConfig({
   i18n: {
     defaultLocale: "en",
     locales: ["en", "es"],
-    routing: { prefixDefaultLocale: true, redirectToDefaultLocale: false },
+    routing: { prefixDefaultLocale: false, redirectToDefaultLocale: false },
   },
 });

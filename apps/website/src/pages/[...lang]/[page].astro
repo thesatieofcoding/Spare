@@ -1,16 +1,16 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import TextLink from "../../components/TextLink.astro";
-import { LANGS, getMessages, localizePath, type Lang } from "../../i18n/utils";
+import { LANGS, langParam, paramToLang, getMessages, localizePath } from "../../i18n/utils";
 
 type PageKey = "foundations" | "dashboard";
 
 export function getStaticPaths() {
   const pages: PageKey[] = ["foundations", "dashboard"];
-  return LANGS.flatMap((lang) => pages.map((page) => ({ params: { lang, page } })));
+  return LANGS.flatMap((lang) => pages.map((page) => ({ params: { lang: langParam(lang), page } })));
 }
 
-const lang = Astro.params.lang as Lang;
+const lang = paramToLang(Astro.params.lang);
 const page = Astro.params.page as PageKey;
 const t = getMessages(lang);
 const name = t.pages[page];

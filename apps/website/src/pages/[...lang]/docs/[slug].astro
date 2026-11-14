@@ -1,14 +1,14 @@
 ---
 import DocsPage from "../../../components/DocsPage.astro";
-import { LANGS, type Lang } from "../../../i18n/utils";
+import { LANGS, langParam, paramToLang } from "../../../i18n/utils";
 import { DOC_SLUGS, type DocSlug } from "../../../lib/docs-nav";
 
 export function getStaticPaths() {
   return LANGS.flatMap((lang) =>
-    DOC_SLUGS.filter((slug) => slug !== "introduction").map((slug) => ({ params: { lang, slug } })),
+    DOC_SLUGS.filter((slug) => slug !== "introduction").map((slug) => ({ params: { lang: langParam(lang), slug } })),
   );
 }
-const lang = Astro.params.lang as Lang;
+const lang = paramToLang(Astro.params.lang);
 const slug = Astro.params.slug as DocSlug;
 ---
 

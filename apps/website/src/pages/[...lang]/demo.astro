@@ -1,19 +1,19 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import { LANGS, getMessages, type Lang } from "../../i18n/utils";
+import { LANGS, langParam, paramToLang, getMessages } from "../../i18n/utils";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { demoConfig } from "../../demo/config";
 import { assertFoundationsInToml } from "../../demo/foundation-guard";
 
 export function getStaticPaths() {
-  return LANGS.map((lang) => ({ params: { lang } }));
+  return LANGS.map((lang) => ({ params: { lang: langParam(lang) } }));
 }
 
 // Build-time: a configured foundation missing from stellar.toml would silently offer nothing.
 assertFoundationsInToml(demoConfig, readFileSync(join(process.cwd(), "public", ".well-known", "stellar.toml"), "utf8"));
 
-const lang = Astro.params.lang as Lang;
+const lang = paramToLang(Astro.params.lang);
 const t = getMessages(lang);
 const d = t.demo;
 const networks = [

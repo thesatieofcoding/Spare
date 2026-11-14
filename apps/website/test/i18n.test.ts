@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getLangFromPath, isLang, localizePath, switchLangPath } from "../src/i18n/utils";
+import { alternateLinks, getLangFromPath, isLang, localizePath, switchLangPath } from "../src/i18n/utils";
 import { en } from "../src/i18n/en";
 import { es } from "../src/i18n/es";
 
@@ -15,7 +15,8 @@ describe("isLang", () => {
 describe("getLangFromPath", () => {
   it("reads the first segment", () => {
     expect(getLangFromPath("/es/docs/")).toBe("es");
-    expect(getLangFromPath("/en/")).toBe("en");
+    expect(getLangFromPath("/en/")).toBe("en")
+    expect(getLangFromPath("/docs/")).toBe("en");
   });
   it("falls back to the default locale", () => {
     expect(getLangFromPath("/")).toBe("en");
@@ -26,20 +27,22 @@ describe("getLangFromPath", () => {
 describe("localizePath", () => {
   it("prefixes the locale and keeps a trailing slash", () => {
     expect(localizePath("es", "docs")).toBe("/es/docs/");
-    expect(localizePath("en", "/docs/")).toBe("/en/docs/");
-    expect(localizePath("en", "")).toBe("/en/");
+    expect(localizePath("en", "/docs/")).toBe("/docs/");
+    expect(localizePath("en", "")).toBe("/");
   });
   it("keeps hash fragments", () => {
     expect(localizePath("es", "#how-it-works")).toBe("/es/#how-it-works");
-    expect(localizePath("en", "docs#quick-start")).toBe("/en/docs/#quick-start");
+    expect(localizePath("en", "docs#quick-start")).toBe("/docs/#quick-start");
   });
 });
 
 describe("switchLangPath", () => {
   it("keeps the same page when changing language", () => {
+    expect(switchLangPath("/docs/", "es")).toBe("/es/docs/");
+    expect(switchLangPath("/es/", "en")).toBe("/");
+    expect(switchLangPath("/foundations", "es")).toBe("/es/foundations/")
+    expect(switchLangPath("/es/docs/registry/", "en")).toBe("/docs/registry/")
     expect(switchLangPath("/en/docs/", "es")).toBe("/es/docs/");
-    expect(switchLangPath("/es/", "en")).toBe("/en/");
-    expect(switchLangPath("/en/foundations", "es")).toBe("/es/foundations/");
   });
   it("handles paths with no locale", () => {
     expect(switchLangPath("/", "es")).toBe("/es/");
@@ -66,5 +69,16 @@ describe("messages", () => {
   });
   it("es uses tu (informal)", () => {
     expect(JSON.stringify(es)).not.toMatch(/\busted(es)?\b/i);
+  });
+});
+
+describe("alternateLinks", () => {
+  it("maps en to the unprefixed path, es to /es/, x-default to the root", () => {
+    expect(alternateLinks("/docs/registry/")).toEqual([
+      { hreflang: "en", href: "/docs/registry/" },
+      { hreflang: "es", href: "/es/docs/registry/" },
+      { hreflang: "x-default", href: "/" },
+    ]);
+    expect(alternateLinks("/es/")[0]).toEqual({ hreflang: "en", href: "/" });
   });
 });

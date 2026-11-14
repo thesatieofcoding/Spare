@@ -7,9 +7,14 @@
   "trailingSlash": true,
   "redirects": [
     {
-      "source": "/",
-      "destination": "/en/",
-      "permanent": false
+      "source": "/en",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/en/:path*",
+      "destination": "/:path*",
+      "permanent": true
     }
   ],
   "headers": [

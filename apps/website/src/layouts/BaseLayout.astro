@@ -2,7 +2,7 @@
 import "../styles/global.css";
 import Footer from "../components/Footer.astro";
 import Nav from "../components/Nav.astro";
-import { LANGS, getMessages, localizePath, switchLangPath, type Lang } from "../i18n/utils";
+import { alternateLinks, getMessages, type Lang } from "../i18n/utils";
 
 interface Props {
   lang: Lang;
@@ -47,8 +47,7 @@ const ogImageAlt = "Spare — Add a little, or skip. Open-source micro-donations
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />
     <meta name="twitter:image:alt" content={ogImageAlt} />
-    {LANGS.map((l) => <link rel="alternate" hreflang={l} href={switchLangPath(pathname, l)} />)}
-    <link rel="alternate" hreflang="x-default" href={localizePath("en", "")} />
+    {alternateLinks(pathname).map((a) => <link rel="alternate" hreflang={a.hreflang} href={new URL(a.href, site).href} />)}
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

@@ -66,7 +66,7 @@ describe("build-time foundation guard", () => {
     expect(() => assertFoundationsInToml(cfg, toml)).toThrow(/mainnet foundation .* not in .*ACCOUNTS/);
   });
   it("the demo page runs the guard at build", () => {
-    const page = readFileSync(new URL("../src/pages/[lang]/demo.astro", import.meta.url), "utf8");
+    const page = readFileSync(new URL("../src/pages/[...lang]/demo.astro", import.meta.url), "utf8");
     expect(page).toContain("assertFoundationsInToml");
   });
 });

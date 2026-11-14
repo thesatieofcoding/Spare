@@ -12,8 +12,8 @@ const files = (dir: string): string[] =>
 
 describe("demo route", () => {
   it("has its own page and is no longer a placeholder", () => {
-    expect(existsSync(join(root, "src/pages/[lang]/demo.astro"))).toBe(true);
-    expect(read("src/pages/[lang]/[page].astro")).not.toMatch(/"demo"/);
+    expect(existsSync(join(root, "src/pages/[...lang]/demo.astro"))).toBe(true);
+    expect(read("src/pages/[...lang]/[page].astro")).not.toMatch(/"demo"/);
   });
 });
 
@@ -37,7 +37,7 @@ describe("demo copy", () => {
 });
 
 describe("demo styling and privacy", () => {
-  const page = () => read("src/pages/[lang]/demo.astro");
+  const page = () => read("src/pages/[...lang]/demo.astro");
   it("uses semantic tokens only (no raw hex, no rgb())", () => {
     const css = page().match(/<style[\s\S]*?<\/style>/g)?.join("") ?? "";
     expect(css.length).toBeGreaterThan(200);
