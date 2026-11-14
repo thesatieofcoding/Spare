@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-11-14
+
 ### Added
 
 - `spare-sdk`: pay the donation in XLM. `payWith: "xlm"` with a `quotes` port (`PathQuotePort`) builds a
