@@ -48,3 +48,26 @@ describe("donateAfter hardening: fee overflow", () => {
     expect(r).toEqual({ status: "not-offered", reason: "invalid-options" });
   });
 });
+
+describe("hardening: JS callers with wrongly typed options never get a TypeError", () => {
+  const bad = (o: Record<string, unknown>) => ({ ...base(), ...o }) as unknown as AddDonationOptions;
+  it("addDonation: numeric amount / maxAmount", async () => {
+    expect(await addDonation(buildTx(), bad({ amount: 0.5 }))).toMatchObject({ status: "not-offered", reason: "invalid-amount" });
+    expect(await addDonation(buildTx(), bad({ maxAmount: 5 }))).toMatchObject({ status: "not-offered", reason: "invalid-amount" });
+  });
+  it("addDonation: missing foundation / accounts / options", async () => {
+    expect(await addDonation(buildTx(), bad({ foundation: undefined }))).toMatchObject({ status: "not-offered", reason: "invalid-options" });
+    expect(await addDonation(buildTx(), bad({ foundation: null }))).toMatchObject({ status: "not-offered", reason: "invalid-options" });
+    expect(await addDonation(buildTx(), bad({ accounts: undefined }))).toMatchObject({ status: "not-offered", reason: "invalid-options" });
+    expect(await addDonation(buildTx(), undefined as never)).toMatchObject({ status: "not-offered", reason: "invalid-options" });
+  });
+  it("donateAfter: numeric amount, missing foundation / accounts", async () => {
+    const main = { successful: true, sourceAccount: user.publicKey() };
+    const o = (x: Record<string, unknown>) => ({ ...base(), ...x }) as never;
+    expect(await donateAfter(main, o({ amount: 0.5 }))).toMatchObject({ status: "not-offered", reason: "invalid-amount" });
+    expect(await donateAfter(main, o({ maxAmount: 5 }))).toMatchObject({ status: "not-offered", reason: "invalid-amount" });
+    expect(await donateAfter(main, o({ foundation: undefined }))).toMatchObject({ status: "not-offered", reason: "invalid-options" });
+    expect(await donateAfter(main, o({ accounts: undefined }))).toMatchObject({ status: "not-offered", reason: "invalid-options" });
+    expect(await donateAfter(main, undefined as never)).toMatchObject({ status: "not-offered", reason: "invalid-options" });
+  });
+});

@@ -4,7 +4,7 @@ const AMOUNT_RE = /^\d+(\.\d{1,7})?$/;
 
 /** Decimal string ("0.5", up to 7 decimals) to stroops. No floats. Returns null if malformed. */
 export function toStroops(s: string): bigint | null {
-  if (!AMOUNT_RE.test(s)) return null;
+  if (typeof s !== "string" || !AMOUNT_RE.test(s)) return null; // JS callers may pass a number
   const [int = "0", frac = ""] = s.split(".");
   const v = BigInt(int) * STROOPS_PER_UNIT + BigInt(frac.padEnd(7, "0"));
   return v > MAX_STROOPS ? null : v;

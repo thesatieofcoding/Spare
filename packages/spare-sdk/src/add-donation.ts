@@ -6,6 +6,7 @@ import { memoFor } from "./app-id.js";
 import { MAX_TX_FEE, USDC_CODE } from "./constants.js";
 import { checkEligibility } from "./eligibility.js";
 import { perOpFee } from "./fee.js";
+import { hasRequiredOptions } from "./options.js";
 import { isNetwork, NETWORKS } from "./network.js";
 import type { AccountPort, AccountSnapshot } from "./ports.js";
 import { canSignAlone, requiredThreshold } from "./signing.js";
@@ -73,6 +74,7 @@ export async function addDonation(
   const t = tx as Transaction;
   const no = (reason: NotOfferedReason): DonationResult => ({ status: "not-offered", reason, transaction: t });
 
+  if (!hasRequiredOptions(opts)) return no("invalid-options");
   if ((opts.amount === undefined) === (opts.roundUp !== true)) return no("invalid-options");
 
   const networkName = opts.network ?? "mainnet";

@@ -6,6 +6,7 @@ import { memoFor } from "./app-id.js";
 import { MAX_TX_FEE, USDC_CODE } from "./constants.js";
 import { checkEligibility } from "./eligibility.js";
 import { perOpFee } from "./fee.js";
+import { hasRequiredOptions } from "./options.js";
 import { isNetwork, NETWORKS } from "./network.js";
 import { canSignAlone } from "./signing.js";
 import type { AccountSnapshot } from "./ports.js";
@@ -52,7 +53,8 @@ export async function donateAfter(
   opts: DonateAfterOptions,
 ): Promise<DonateAfterResult> {
   const no = (reason: NotOfferedReason): DonateAfterResult => ({ status: "not-offered", reason });
-  if (!result.successful) return no("main-tx-not-successful");
+  if (!result?.successful) return no("main-tx-not-successful");
+  if (!hasRequiredOptions(opts)) return no("invalid-options");
 
   const networkName = opts.network ?? "mainnet";
   if (!isNetwork(networkName)) return no("invalid-options");
