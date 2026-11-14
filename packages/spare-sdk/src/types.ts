@@ -101,4 +101,9 @@ export interface CommonOptions {
   quotes?: PathQuotePort;
   /** Margin over the XLM quote, in basis points (integer 0-1000). Default 200 (2%). */
   slippageBps?: number;
+  /**
+   * XLM only: use exactly this sendMax (XLM, up to 7 decimals) instead of quote + `slippageBps`,
+   * e.g. the cap a donor already approved. Not offered (`no-path`) when the live quote exceeds it.
+   */
+  sendMax?: string;
 }

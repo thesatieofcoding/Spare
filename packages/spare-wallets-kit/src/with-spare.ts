@@ -1,6 +1,7 @@
 import { TransactionBuilder, type FeeBumpTransaction, type Transaction } from "@stellar/stellar-sdk";
 import { NETWORKS, addDonation, donateAfter, parseUsdc, type DonationInfo, type PayWith } from "spare-sdk";
 import { createConfirmModal } from "./modal.js";
+import { sameDonation } from "./requote.js";
 import { promptSession, type PromptSession } from "./session.js";
 import type {
   ChoiceCheck, ConfirmFn, DonationChoice, DonationChoices, DonationPrompt, FollowUpResult, Locale, MainTxResult,
@@ -150,11 +151,13 @@ export function withSpare(kit: SignerLike, options: SpareOptions): SpareSigner {
   async function negotiate(
     s: PromptSession,
     candidates: DonationChoice[],
-    evaluate: (c: DonationChoice) => Promise<Evaluation>,
+    /** `cap`: XLM only, build with exactly this sendMax (the one the donor saw). */
+    evaluate: (c: DonationChoice, cap?: string) => Promise<Evaluation>,
     roundUpPossible: boolean,
     secondSignature: boolean,
     /** Off for 0.1.3-style integrations (explicit `mode`, no `presets`): plain yes/no prompt. */
     picker: boolean,
+    passphrase: string,
   ): Promise<{ offer: Offer } | { declined: true; reason?: string } | { reason: string; passthrough?: true }> {
     let first: Evaluation = { reason: "invalid-options" };
     let chosen: DonationChoice | undefined;
@@ -208,15 +211,20 @@ export function withSpare(kit: SignerLike, options: SpareOptions): SpareSigner {
     if (!sel) return { declined: true };
     if (sel.offer.donation.payWith !== "xlm") return { offer: sel.offer };
 
-    // XLM: the quote may be minutes old. Re-quote live and rebuild; sign only if the new sendMax is
-    // within the "≈ N XLM max" the donor saw. Otherwise fail closed (nothing added, no re-prompt).
-    const shown = sel.offer.donation.sendMaxStroops;
-    const fresh = await evaluate(sel.choice).catch((): Evaluation => ({ reason: "error" }));
-    const max = "offer" in fresh ? fresh.offer.donation.sendMaxStroops : undefined;
-    if (!("offer" in fresh) || shown === undefined || max === undefined || max > shown) {
-      return { declined: true, reason: "quote-changed" };
-    }
-    return { offer: fresh.offer };
+    // XLM: the quote may be minutes old. Re-quote live and rebuild with the SAME sendMax the donor
+    // approved as the cap: the slippage margin absorbs small moves. Sign only when the fresh raw
+    // quote fits under that cap and the rebuilt tx is the same donation; otherwise fail closed
+    // (the original tx is signed, nothing added, no re-prompt).
+    const shown = sel.offer.donation;
+    const changed = { reason: "quote-changed" } as const;
+    if (shown.sendMax === undefined) return changed;
+    const fresh = await evaluate(sel.choice, shown.sendMax).catch((): Evaluation => ({ reason: "error" }));
+    if (!("offer" in fresh)) return changed;
+    const d = fresh.offer.donation;
+    const same = d.payWith === "xlm" && d.amountStroops === shown.amountStroops && d.foundation === shown.foundation
+      && d.attributed === shown.attributed && d.sendMaxStroops === shown.sendMaxStroops
+      && sameDonation(sel.offer.xdr, fresh.offer.xdr, passphrase);
+    return same ? { offer: fresh.offer } : changed;
   }
 
   /** Preselection order: the preferred asset first (USDC unless the app says "xlm"). */
@@ -236,9 +244,10 @@ export function withSpare(kit: SignerLike, options: SpareOptions): SpareSigner {
       if (!passphrase) return { kind: "original", outcome: "error", reason: "missing-network-passphrase" };
       const tx = TransactionBuilder.fromXDR(xdr, passphrase) as Transaction | FeeBumpTransaction;
       const s = promptSession(options.accounts, options.fetch ?? ((i, init) => globalThis.fetch(i, init)));
-      const evaluate = async (c: DonationChoice): Promise<Evaluation> => {
+      const evaluate = async (c: DonationChoice, cap?: string): Promise<Evaluation> => {
         const r = await addDonation(tx, {
           ...common(s, opts, c.payWith),
+          ...(cap !== undefined && { sendMax: cap }),
           ...(c.roundUp === true ? { roundUp: true } : { amount: c.amount }),
         });
         if (r.status === "passthrough") return { reason: r.reason, passthrough: true };
@@ -247,7 +256,7 @@ export function withSpare(kit: SignerLike, options: SpareOptions): SpareSigner {
       };
       const mode = options.mode;
       const base = mode && "roundUp" in mode ? { roundUp: true as const } : { amount: mode?.amount ?? presetAmounts(options)[0] ?? MIN_AMOUNT };
-      const r = await negotiate(s, candidatesFor(base), evaluate, true, false, pickerOn);
+      const r = await negotiate(s, candidatesFor(base), evaluate, true, false, pickerOn, passphrase);
       if ("declined" in r) return { kind: "original", outcome: "declined", ...(r.reason !== undefined && { reason: r.reason }) };
       if ("reason" in r) return { kind: "original", outcome: r.passthrough ? "passthrough" : "not-offered", reason: r.reason };
       return { kind: "modified", xdr: r.offer.xdr, donation: r.offer.donation };
@@ -279,19 +288,21 @@ export function withSpare(kit: SignerLike, options: SpareOptions): SpareSigner {
       const amount = options.followUpAmount ??
         (mode === undefined ? presetAmounts(options)[0] : "amount" in mode ? mode.amount : undefined);
       if (amount === undefined) return { status: "skipped", reason: "no-follow-up-amount" };
-      if (!resolvePassphrase(opts, options)) return { status: "skipped", reason: "missing-network-passphrase" };
+      const passphrase = resolvePassphrase(opts, options);
+      if (!passphrase) return { status: "skipped", reason: "missing-network-passphrase" };
       const explicit = opts.networkPassphrase ?? options.networkPassphrase;
       const s = promptSession(options.accounts, options.fetch ?? ((i, init) => globalThis.fetch(i, init)));
-      const evaluate = async (c: DonationChoice): Promise<Evaluation> => {
+      const evaluate = async (c: DonationChoice, cap?: string): Promise<Evaluation> => {
         if (c.roundUp === true) return { reason: "round-up-unavailable" };
         const r = await donateAfter(main, {
           ...common(s, opts, c.payWith),
+          ...(cap !== undefined && { sendMax: cap }),
           amount: c.amount,
           ...(explicit !== undefined && { networkPassphrase: explicit }),
         });
         return r.status === "offered" ? { offer: { xdr: r.transaction.toXDR(), donation: r.donation } } : { reason: r.reason };
       };
-      const r = await negotiate(s, candidatesFor({ amount }), evaluate, false, true, pickerOn);
+      const r = await negotiate(s, candidatesFor({ amount }), evaluate, false, true, pickerOn, passphrase);
       if ("declined" in r) return { status: "skipped", reason: r.reason ?? "declined" };
       if ("reason" in r) return { status: "skipped", reason: r.reason };
       offered = r.offer;

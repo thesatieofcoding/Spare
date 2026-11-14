@@ -240,37 +240,48 @@ describe("withSpare: XLM quote is re-checked live at confirm", () => {
     return { quoteXlmForUsdc };
   };
 
-  it("price moved above the shown max: not signed silently, declined with quote-changed", async () => {
-    const rate = { v: 4n as bigint | null };
+  it("a small rise within the margin is absorbed: signed with exactly the sendMax that was shown", async () => {
+    const rate = { v: 40_000_000n as bigint | null }; // 4 XLM per USD, in stroops of XLM per USD unit
+    const port = { quoteXlmForUsdc: vi.fn(async (usdc: bigint) => (rate.v === null ? null : { sendAmount: (usdc * rate.v) / 10_000_000n, path: [] })) };
     const confirm = driving(async (p) => {
-      expect(p).toMatchObject({ payWith: "xlm", xlmSendMax: "2.0400000" });
-      rate.v = 5n;
+      expect(p.xlmSendMax).toBe("2.0400000");
+      rate.v = 40_500_000n; // 0.50 USD now costs 2.025 XLM: above the old quote, under the shown cap
     });
-    const kit = fakeKit();
-    const tx = buildTx({ usdc: "1" });
-    const r = await withSpare(kit, baseOptions({ confirm, quotes: moving(rate), payWith: "xlm" }) as never)
-      .signWithDonation(tx.toXDR(), { networkPassphrase: PASSPHRASE });
-    expect(r).toMatchObject({ outcome: "declined", reason: "quote-changed", changed: false, donation: null });
-    expect(kit.signTransaction.mock.calls[0]?.[0]).toBe(tx.toXDR());
+    const r = await withSpare(fakeKit(), baseOptions({ confirm, quotes: port, payWith: "xlm" }) as never)
+      .signWithDonation(buildTx({ usdc: "1" }).toXDR(), { networkPassphrase: PASSPHRASE });
+    expect(r.outcome).toBe("donated");
+    const op = signed(r.signedTxXdr).operations[1] as Operation.PathPaymentStrictReceive;
+    expect(op.sendMax).toBe("2.0400000");
+    expect(op.destAmount).toBe("0.5000000");
+    expect(r.donation).toMatchObject({ sendMax: "2.0400000", quotedXlm: "2.0250000" });
   });
 
-  it("price at or under the shown max: signs a fresh tx whose sendMax is within what was shown", async () => {
+  it("a drop keeps the shown cap too", async () => {
     const rate = { v: 4n as bigint | null };
     const confirm = driving(async () => void (rate.v = 3n));
     const r = await withSpare(fakeKit(), baseOptions({ confirm, quotes: moving(rate), payWith: "xlm" }) as never)
       .signWithDonation(buildTx({ usdc: "1" }).toXDR(), { networkPassphrase: PASSPHRASE });
     expect(r.outcome).toBe("donated");
-    const op = signed(r.signedTxXdr).operations[1] as Operation.PathPaymentStrictReceive;
-    expect(op.sendMax).toBe("1.5300000");
-    expect(r.donation?.sendMax).toBe("1.5300000");
+    expect((signed(r.signedTxXdr).operations[1] as Operation.PathPaymentStrictReceive).sendMax).toBe("2.0400000");
   });
 
-  it("no quote at confirm: declined", async () => {
+  it("a rise beyond the shown cap is not signed: original tx, not-offered / quote-changed", async () => {
+    const rate = { v: 4n as bigint | null };
+    const confirm = driving(async () => void (rate.v = 5n)); // 2.5 XLM > 2.04 cap
+    const kit = fakeKit();
+    const tx = buildTx({ usdc: "1" });
+    const r = await withSpare(kit, baseOptions({ confirm, quotes: moving(rate), payWith: "xlm" }) as never)
+      .signWithDonation(tx.toXDR(), { networkPassphrase: PASSPHRASE });
+    expect(r).toMatchObject({ outcome: "not-offered", reason: "quote-changed", changed: false, donation: null });
+    expect(kit.signTransaction.mock.calls[0]?.[0]).toBe(tx.toXDR());
+  });
+
+  it("no quote at confirm: not-offered / quote-changed", async () => {
     const rate = { v: 4n as bigint | null };
     const confirm = driving(async () => void (rate.v = null));
     const r = await withSpare(fakeKit(), baseOptions({ confirm, quotes: moving(rate), payWith: "xlm" }) as never)
       .signWithDonation(buildTx({ usdc: "1" }).toXDR(), { networkPassphrase: PASSPHRASE });
-    expect(r).toMatchObject({ outcome: "declined", reason: "quote-changed" });
+    expect(r).toMatchObject({ outcome: "not-offered", reason: "quote-changed" });
   });
 
   it("the follow-up re-checks too", async () => {

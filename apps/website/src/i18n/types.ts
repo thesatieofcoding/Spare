@@ -35,7 +35,7 @@ export const DEMO_REASONS = [
   "foundation-not-verified", "foundation-trustline-missing", "foundation-trustline-unauthorized",
   "foundation-trustline-full", "user-trustline-missing", "user-trustline-unauthorized", "insufficient-balance",
   "account-lookup-failed", "account-not-synced", "main-tx-not-successful", "unsupported-operation", "multisig", "multiple-sources",
-  "extra-signers", "fee-bump", "already-signed", "soroban", "no-path", "other",
+  "extra-signers", "fee-bump", "already-signed", "soroban", "no-path", "quote-changed", "other",
 ] as const;
 export type DemoReasonKey = (typeof DEMO_REASONS)[number];
 

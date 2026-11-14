@@ -196,6 +196,7 @@ export const es: Messages = {
       "user-trustline-unauthorized": "Tu trustline de USDC no está autorizada.",
       "insufficient-balance": "Tu saldo no cubre la donación y la comisión.",
       "no-path": "Ahora no hay una ruta de XLM a USDC para este monto.",
+      "quote-changed": "El precio de XLM superó el máximo que viste, así que no se agregó la donación.",
       "account-lookup-failed": "No se pudo revisar tu cuenta.",
       "account-not-synced": "Tu cuenta todavía no está al día, así que no se ofreció la donación.",
       "main-tx-not-successful": "La compra no tuvo éxito.",

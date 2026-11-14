@@ -90,6 +90,22 @@ describe("addDonation paying with XLM (path payment)", () => {
     }
   });
 
+  it("an explicit sendMax is used as is, and the quote must fit under it", async () => {
+    const r = await addDonation(buildTx({ ops: [payXlm("1")] }), base({ sendMax: "2.1" }));
+    if (r.status !== "offered") throw new Error(r.status);
+    expect((r.transaction.operations.at(-1) as Operation.PathPaymentStrictReceive).sendMax).toBe("2.1000000");
+    expect(r.donation).toMatchObject({ sendMax: "2.1000000", quotedXlm: "2.0000000" });
+    // quote 2 XLM exactly at the cap is fine; one stroop under is not
+    expect(await addDonation(buildTx({ ops: [payXlm("1")] }), base({ sendMax: "2" }))).toMatchObject({ status: "offered" });
+    expect(await addDonation(buildTx({ ops: [payXlm("1")] }), base({ sendMax: "1.9999999" }))).toMatchObject({ reason: "no-path" });
+    for (const sendMax of ["abc", "0", "-1"]) {
+      expect(await addDonation(buildTx(), base({ sendMax }))).toMatchObject({ reason: "invalid-options" });
+    }
+    // the balance check uses the explicit cap: 1 XLM purchase + 3 cap + fee
+    const accounts = noUsdcUser("4");
+    expect(await addDonation(buildTx({ ops: [payXlm("1")] }), base({ accounts, sendMax: "3" }))).toMatchObject({ reason: "insufficient-balance" });
+  });
+
   it("needs a quote port and a known pay asset", async () => {
     expect(await addDonation(buildTx(), base({ quotes: undefined }))).toMatchObject({ reason: "invalid-options" });
     expect(await addDonation(buildTx(), base({ payWith: "btc" as never }))).toMatchObject({ reason: "invalid-options" });

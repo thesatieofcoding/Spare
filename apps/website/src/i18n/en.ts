@@ -196,6 +196,7 @@ export const en: Messages = {
       "user-trustline-unauthorized": "Your USDC trustline is not authorized.",
       "insufficient-balance": "Your balance does not cover the donation and the fee.",
       "no-path": "There is no XLM to USDC path for this amount right now.",
+      "quote-changed": "The XLM price moved above the maximum you saw, so no donation was added.",
       "account-lookup-failed": "Your account could not be checked.",
       "account-not-synced": "Your account is not up to date yet, so no donation was offered.",
       "main-tx-not-successful": "The purchase did not succeed.",

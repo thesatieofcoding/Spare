@@ -1,5 +1,5 @@
 import { Asset, Operation, type xdr } from "@stellar/stellar-sdk";
-import { formatStroops } from "./amount.js";
+import { formatStroops, parseUsdc } from "./amount.js";
 import { DEFAULT_SLIPPAGE_BPS, MAX_PATH_LENGTH, MAX_SLIPPAGE_BPS, USDC_CODE } from "./constants.js";
 import type { Network } from "./network.js";
 import type { PathQuotePort, XlmQuote } from "./ports.js";
@@ -13,19 +13,21 @@ export function xlmSendMax(quoted: bigint, slippageBps: number): bigint {
 
 export type PayPlan =
   | { payWith: "usdc" }
-  | { payWith: "xlm"; quotes: PathQuotePort; slippageBps: number };
+  | { payWith: "xlm"; quotes: PathQuotePort; slippageBps: number; cap?: bigint };
 
 /** Validates the pay options. Never throws: JS callers can pass anything. */
 export function payPlan(opts: CommonOptions, network: Network): PayPlan | NotOfferedReason {
   const payWith: unknown = opts.payWith ?? "usdc";
-  if (payWith === "usdc") return { payWith };
+  if (payWith === "usdc") return opts.sendMax === undefined ? { payWith } : "invalid-options";
   if (payWith !== "xlm") return "invalid-options";
   const q = opts.quotes as PathQuotePort | undefined;
   if (typeof q !== "object" || q === null || typeof q.quoteXlmForUsdc !== "function") return "invalid-options";
   if (q.network !== undefined && q.network !== network) return "network-mismatch";
   const bps = opts.slippageBps ?? DEFAULT_SLIPPAGE_BPS;
   if (!Number.isInteger(bps) || bps < 0 || bps > MAX_SLIPPAGE_BPS) return "invalid-options";
-  return { payWith, quotes: q, slippageBps: bps };
+  if (opts.sendMax === undefined) return { payWith, quotes: q, slippageBps: bps };
+  const cap = parseUsdc(opts.sendMax); // same 7-decimal positive amount format
+  return cap === null ? "invalid-options" : { payWith, quotes: q, slippageBps: bps, cap };
 }
 
 export interface PricedXlm {
@@ -46,6 +48,7 @@ export async function priceInXlm(
   if (!quote || typeof quote.sendAmount !== "bigint" || quote.sendAmount <= 0n) return null;
   if (!Array.isArray(quote.path) || quote.path.length > MAX_PATH_LENGTH) return null;
   if (quote.path.some((a) => !(a instanceof Asset) || a.isNative())) return null;
+  if (plan.cap !== undefined) return quote.sendAmount > plan.cap ? null : { quote, sendMax: plan.cap };
   return { quote, sendMax: xlmSendMax(quote.sendAmount, plan.slippageBps) };
 }
 
