@@ -28,3 +28,5 @@ CLAUDE.md
 
 # kuyfi audit reports (local only)
 kuyfi-report-*.json
+.vercel
+.env*
