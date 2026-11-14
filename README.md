@@ -116,7 +116,7 @@ Building your own UI? Use [`spare-sdk`](packages/spare-sdk) directly: `addDonati
 | Ledger screen recording (Soroban flow, donation shown on the device) | TODO: video link |
 | Testnet: classic payment + donation signed with Varial through the wrapper | [`1600fea1…`](https://stellar.expert/explorer/testnet/tx/1600fea12c8ad8dbb2fd59ee95642171f08b08c6236a1031becdcc41b8a05db9) |
 | Testnet: Soroban call + follow-up donation signed with Varial through the wrapper | Call [`dd286449…`](https://stellar.expert/explorer/testnet/tx/dd28644933c0cc06f9c0cceac5b3b1eb6539a4282195a2f4a0ad23057af01c11) · Donation [`bc2c73ec…`](https://stellar.expert/explorer/testnet/tx/bc2c73ecb1499d5a51509c1562bbaf538e382aeb9f00812aaf4053b299aa2fb4) |
-| Quickstart tester recording (developer who did not write Spare, timed) | TODO: tester name, GitHub and video link |
+| Quickstart tester recording (developer who did not write Spare, timed) | Tester: Pau Koh ([@Klorenn](https://github.com/Klorenn)) · TODO: video link |
 
 Wallets tested: Ledger and Varial. LOBSTR was not used.
 
