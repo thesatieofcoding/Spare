@@ -3,7 +3,7 @@ import {
 } from "@stellar/stellar-sdk";
 import { formatStroops, parseUsdc, toStroops } from "./amount.js";
 import { memoFor } from "./app-id.js";
-import { USDC_CODE } from "./constants.js";
+import { MAX_TX_FEE, USDC_CODE } from "./constants.js";
 import { checkEligibility } from "./eligibility.js";
 import { perOpFee } from "./fee.js";
 import { isNetwork, NETWORKS } from "./network.js";
@@ -63,7 +63,7 @@ export async function donateAfter(
   const amount = parseUsdc(opts.amount);
   if (amount === null) return no("invalid-amount");
   const baseFee = perOpFee(opts.baseFee);
-  if (baseFee === null) return no("invalid-options");
+  if (baseFee === null || baseFee > MAX_TX_FEE) return no("invalid-options");
 
   let user: AccountSnapshot | null;
   try {

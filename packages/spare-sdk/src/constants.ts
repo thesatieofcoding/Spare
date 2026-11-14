@@ -12,3 +12,6 @@ export const DEFAULT_BASE_FEE = "100";
 export const MIN_BASE_FEE = 100n;
 /** SEP-1: stellar.toml must not exceed 100KB. */
 export const MAX_TOML_BYTES = 100 * 1024;
+
+/** Largest total fee a transaction can carry (uint32), in stroops. */
+export const MAX_TX_FEE = 4_294_967_295n;
