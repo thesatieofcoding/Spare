@@ -85,7 +85,7 @@ Building your own UI? Use [`spare-sdk`](packages/spare-sdk) directly: `addDonati
 
 - **The user always decides.** Nothing is added without an explicit yes. Declining signs the original transaction, byte for byte.
 - **No custody.** Funds go from the user to the foundation in a normal Stellar payment.
-- **Circle USDC only** (`GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN`). Look-alike assets are rejected.
+- **Foundations receive Circle USDC only** (`GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN`). Look-alike assets are rejected. A donor may pay in XLM; a path payment converts it so the foundation still receives exactly the USDC amount shown.
 - **Domain-verified foundations only.** "Domain-verified" means the account is listed on that website's `stellar.toml` — nothing more.
 - **Never blocks a payment.** If a check fails (no trustline, low balance, over your cap, unverified foundation) no donation is offered. If anything inside Spare errors, the original transaction is signed.
 - **Safe pass-through.** Partly signed, multisig, fee-bump and Soroban transactions are never modified.
@@ -95,13 +95,32 @@ Building your own UI? Use [`spare-sdk`](packages/spare-sdk) directly: `addDonati
 
 | Package | Description | Status |
 | --- | --- | --- |
-| [`spare-sdk`](packages/spare-sdk) | Core TypeScript library: classic bundling, Soroban follow-up, eligibility checks, `stellar.toml` verification. | ✅ Built · 77 tests |
-| [`spare-wallets-kit`](packages/spare-wallets-kit) | Stellar Wallets Kit wrapper with an accessible confirmation modal (EN/ES, light/dark). | ✅ Built · 37 tests |
-| [`contracts/registry`](contracts/registry) | Soroban foundation registry. No admin, no upgrade function, no funds. | ✅ Built · 31 tests · not deployed |
-| [`apps/website`](apps/website) | Marketing + docs site (Astro, EN/ES, light/dark). Home and Docs built; Foundations, Dashboard and Demo pending. | 🚧 In progress |
-| Indexer | Ingests registry events and tagged USDC payments; rebuildable from Horizon. | 🔜 Planned |
-| Dashboard | Public per-foundation pages with totals, apps and transaction links. | 🔜 Planned |
-| Demo app | Classic payment + donation and Soroban call + follow-up, on mainnet. | 🔜 Planned |
+| [`spare-sdk`](packages/spare-sdk) | Core TypeScript library: classic bundling, Soroban follow-up, eligibility checks, `stellar.toml` verification, donations paid in USDC or XLM (path payment; the foundation always receives USDC). | ✅ [npm](https://www.npmjs.com/package/spare-sdk) |
+| [`spare-wallets-kit`](packages/spare-wallets-kit) | Stellar Wallets Kit wrapper with an accessible confirmation modal (EN/ES, light/dark, amount picker). | ✅ [npm](https://www.npmjs.com/package/spare-wallets-kit) |
+| [`contracts/registry`](contracts/registry) | Soroban foundation registry. No admin, no upgrade function, no funds. | ✅ Built · testnet · mainnet pending (D2) |
+| [`apps/website`](apps/website) | Site, docs and demo (Astro, EN/ES, light/dark). | ✅ [donatespare.xyz](https://donatespare.xyz) |
+| Demo app | Classic payment + donation and Soroban call + follow-up, on testnet and mainnet. | ✅ [donatespare.xyz/demo](https://donatespare.xyz/demo/) |
+| Indexer | Ingests registry events and tagged USDC payments; rebuildable from Horizon. | 🔜 D2 |
+| Dashboard | Public per-foundation pages with totals, apps and transaction links. | 🔜 D2 |
+
+## Deliverable 1 evidence
+
+| SOW evidence | Link |
+| --- | --- |
+| Both packages on npm with READMEs and a quickstart | [`spare-sdk`](https://www.npmjs.com/package/spare-sdk) · [`spare-wallets-kit`](https://www.npmjs.com/package/spare-wallets-kit) · [Quick start](https://donatespare.xyz/docs/quick-start/) |
+| npm releases published with provenance from GitHub Actions | [Release v0.1.4](https://github.com/thesatieofcoding/Spare/actions/runs/43610287959) · [`release.yml`](.github/workflows/release.yml) |
+| Green CI run | [CI on `main`](https://github.com/thesatieofcoding/Spare/actions/runs/43610277836) |
+| Demo app live | [donatespare.xyz/demo](https://donatespare.xyz/demo/) |
+| Mainnet: classic payment with the donation in the same transaction (signed with Ledger) | [`d711eeca…`](https://stellar.expert/explorer/public/tx/d711eeca1649aebdefb3d45a6be33bf11788f82ba75356dd9f8958bd78d4e337) |
+| Mainnet: Soroban call + tagged follow-up donation (signed with Ledger) | Call [`ca399e81…`](https://stellar.expert/explorer/public/tx/ca399e816de25ebb52d304d1b89ea029d2d5a1939e636f31939a3847302bd04a) · Donation [`229f1e84…`](https://stellar.expert/explorer/public/tx/229f1e849a3d105bf5ddaac2f248c1da88ba95f59f79f7d4659b05d7e75299d8) |
+| Ledger screen recording (Soroban flow, donation shown on the device) | TODO: video link |
+| Testnet: classic payment + donation signed with Varial through the wrapper | [`1600fea1…`](https://stellar.expert/explorer/testnet/tx/1600fea12c8ad8dbb2fd59ee95642171f08b08c6236a1031becdcc41b8a05db9) |
+| Testnet: Soroban call + follow-up donation signed with Varial through the wrapper | Call [`dd286449…`](https://stellar.expert/explorer/testnet/tx/dd28644933c0cc06f9c0cceac5b3b1eb6539a4282195a2f4a0ad23057af01c11) · Donation [`bc2c73ec…`](https://stellar.expert/explorer/testnet/tx/bc2c73ecb1499d5a51509c1562bbaf538e382aeb9f00812aaf4053b299aa2fb4) |
+| Quickstart tester recording (developer who did not write Spare, timed) | TODO: tester name, GitHub and video link |
+
+Wallets tested: Ledger and Varial. LOBSTR was not used.
+
+Accounts: mainnet foundation `GBTDED5SE2QAKFQ3Y6NY75QGCKQTQ3Z6H3ZYM4PWUX3X36QMOKEEJFPQ` (domain-verified via [`stellar.toml`](https://donatespare.xyz/.well-known/stellar.toml); demo donations return to the builder), demo merchant `GAKPFMRQLR25DIFUIDWDJ4P6D7VGUSLNBWVNWA5OKA72M4LPUKTDHLUX`, Ledger payer `GDXCVX4JSUVS3JZFOWAVBNWAV4HLO3H4GF7ES3WDN7DEOLPTX4M5YF72`.
 
 ## Development
 
