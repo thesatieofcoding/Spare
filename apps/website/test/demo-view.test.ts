@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { en } from "../src/i18n/en";
 import { es } from "../src/i18n/es";
-import { buildView, explorerTxUrl, shouldFocusResult, truncate, type ViewContext } from "../src/demo/view";
+import { buildView, explorerTxUrl, formatUsdDisplay, shouldFocusResult, truncate, type ViewContext } from "../src/demo/view";
 import { initialState, reduce, type DemoEvent, type DemoState } from "../src/demo/machine";
 
 const ADDR = "GCAEBBLSVFM2RLNBYMEZLFWHCXFHOGVJAXQK2K3WVHS2UGVDVWJOXGQJ";
@@ -18,6 +18,16 @@ describe("explorerTxUrl", () => {
     expect(explorerTxUrl("testnet", "abc")).toBe("https://stellar.expert/explorer/testnet/tx/abc");
     expect(explorerTxUrl("mainnet", "abc")).toBe("https://stellar.expert/explorer/public/tx/abc");
   });
+});
+
+describe("formatUsdDisplay", () => {
+  it("trims stroop zeros to cents", () => {
+    expect(formatUsdDisplay("0.1000000")).toBe("0.10");
+    expect(formatUsdDisplay("0.5000000")).toBe("0.50");
+    expect(formatUsdDisplay("1.0000000")).toBe("1.00");
+  });
+  it("keeps decimals that matter", () => expect(formatUsdDisplay("0.6500001")).toBe("0.6500001"));
+  it("passes through amounts without a fraction", () => expect(formatUsdDisplay("2")).toBe("2.00"));
 });
 
 describe("truncate", () => {
@@ -90,7 +100,8 @@ describe("buildView", () => {
       result: { mainHash: "m1", donationHash: "d1", outcome: "donated", donationAmount: "0.5000000" } };
     const v = buildView(s, ctx());
     expect(v.tone).toBe("success");
-    expect(v.status).toContain("0.5000000");
+    expect(v.status).toContain("US$0.50.");
+    expect(v.status).not.toContain("0.5000000");
     expect(v.links).toEqual([
       { label: en.demo.mainTx, href: "https://stellar.expert/explorer/testnet/tx/m1" },
       { label: en.demo.donationTx, href: "https://stellar.expert/explorer/testnet/tx/d1" },

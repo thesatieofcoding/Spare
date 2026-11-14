@@ -52,6 +52,12 @@ export const shouldFocusResult = (prev: DemoState, next: DemoState): boolean =>
 
 export const truncate = (s: string): string => (s.length > 12 ? `${s.slice(0, 4)}…${s.slice(-4)}` : s);
 
+/** Stroop-precision USDC ("0.1000000") to display cents ("0.10"); keeps decimals that matter. */
+export function formatUsdDisplay(usdc: string): string {
+  const [i = "0", f = ""] = usdc.split(".");
+  return `${i}.${f.replace(/0+$/, "").padEnd(2, "0")}`;
+}
+
 const fill = (text: string, values: Record<string, string>): string =>
   text.replace(/\{(\w+)\}/g, (m, k: string) => values[k] ?? m);
 
@@ -62,7 +68,7 @@ function reasonText(copy: DemoCopy, reason: string | undefined): string {
 }
 
 function resultText(copy: DemoCopy, r: FlowResult): string {
-  const base = fill(copy.outcomes[r.outcome], { amount: fill(copy.donatedAmount, { amount: r.donationAmount ?? "" }) });
+  const base = fill(copy.outcomes[r.outcome], { amount: fill(copy.donatedAmount, { amount: r.donationAmount === undefined ? "" : formatUsdDisplay(r.donationAmount) }) });
   const why = r.outcome === "declined" || r.outcome === "donated" ? "" : reasonText(copy, r.reason);
   return why === "" ? base : `${base} ${why}`;
 }
