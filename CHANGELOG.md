@@ -3,6 +3,31 @@
 All notable changes to `spare-sdk` and `spare-wallets-kit`. Both packages are versioned together.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+
+- `spare-sdk`: `donateAfter` waits (bounded, `syncTimeoutMs` / `syncIntervalMs` / `sleep`) for Horizon to ingest the
+  main tx's `ledger` before reading the account, and returns `not-offered` with the new reason `account-not-synced`
+  if it never does. `HorizonAccountPort` reports Horizon's latest ingested ledger (from `history_latest_ledger`,
+  the `Latest-Ledger` value) in `AccountSnapshot.ledger`, so it also works for sponsored txs. `sequence` stays an
+  optional extra signal for when the donor was the tx source.
+- Testnet end-to-end script for the classic and Soroban flows.
+- Docs: testnet quick start with a demo foundation, funding recipe, Node example and `signWithDonation`;
+  install notes (npm/pnpm/yarn, ESM) in the package READMEs; `/docs/quickstart/` redirects to `/docs/quick-start/`.
+- Demo: the Soroban follow-up passes the main tx ledger, and an uncertain follow-up submit is looked up until the
+  tx's own timebound has passed before it is reported as failed.
+
+### Changed (behavior / migration)
+
+1. `spare-wallets-kit` now infers `network` from the transaction's passphrase when no `network` option is set.
+   In 0.1.2 a testnet passphrase without `network` gave `network-mismatch`; it now works as testnet.
+2. `spare-sdk`: bad input never throws. A zero-operation tx, a fee rate whose total exceeds uint32, wrongly typed
+   amounts and a missing `foundation` / `accounts` return `not-offered` with `invalid-options` or `invalid-amount`.
+3. `spare-sdk`: the foundation domain is normalized before fetching `stellar.toml`.
+4. `AccountSnapshot.ledger` means the latest ingested ledger of the data source, not the account's last-modified
+   ledger (additive; the field is optional).
+
 ## [0.1.2]
 
 ### Added
