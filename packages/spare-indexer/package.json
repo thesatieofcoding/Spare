@@ -1,0 +1,26 @@
+{
+  "name": "spare-indexer",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Indexes Spare registry events and USDC donations into a deterministic public snapshot.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "spare-sdk": "workspace:^"
+  },
+  "devDependencies": {
+    "@stellar/stellar-sdk": "^17.4.0",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}
