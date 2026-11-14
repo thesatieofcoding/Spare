@@ -4,7 +4,11 @@ Add [Spare](../spare-sdk) to an app that signs with [Stellar Wallets Kit](https:
 
 ```
 pnpm add spare-wallets-kit spare-sdk @creit.tech/stellar-wallets-kit @stellar/stellar-sdk
+npm install spare-wallets-kit spare-sdk @creit.tech/stellar-wallets-kit @stellar/stellar-sdk
+yarn add spare-wallets-kit spare-sdk @creit.tech/stellar-wallets-kit @stellar/stellar-sdk
 ```
+
+ESM only, Node 20 or newer: in a Node project set `"type": "module"` in `package.json`. `@creit.tech/stellar-wallets-kit` is an optional peer: a headless Node app can skip it (see below).
 
 ## Quickstart
 
@@ -30,7 +34,71 @@ const spare = withSpare(StellarWalletsKit, {   // v1: pass your kit instance
 const { signedTxXdr } = await spare.signTransaction(xdr, { address });
 ```
 
-Need to know whether the hash changed? Use `signWithDonation`: it returns `{ signedTxXdr, donation, changed, outcome }`.
+The placeholders `G...` / `foundation.org` are for production: use your foundation's registered account and its website domain.
+
+Need to know whether the hash changed? Use `signWithDonation`: it returns `{ signedTxXdr, donation, changed, outcome, reason? }`. `outcome` is `"donated" | "declined" | "not-offered" | "passthrough" | "error"`; everything except `"donated"` signs your original transaction, and `reason` says why (for example `insufficient-balance`).
+
+## Try it on testnet (Node, no browser)
+
+The demo foundation `GCAEBBLSVFM2RLNBYMEZLFWHCXFHOGVJAXQK2K3WVHS2UGVDVWJOXGQJ` (domain `donatespare.xyz`) works on testnet. It is **not a charity**: testnet donations are demo funds that return to the Spare builder. You need a testnet account with Circle testnet USDC (issuer `GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5`); the [quick start](https://donatespare.xyz/docs/quick-start/) has a short script that funds one (Friendbot, trustline, XLM to USDC on the testnet DEX).
+
+Any object with `signTransaction(xdr, opts)` works as the kit, so a headless app passes its own signer and a custom `confirm`. Save as `donate.ts` and run `SECRET=S... npx tsx donate.ts`:
+
+```ts
+import { Asset, BASE_FEE, Horizon, Keypair, Networks, Operation, TransactionBuilder } from "@stellar/stellar-sdk";
+import { HorizonAccountPort } from "spare-sdk";
+import { withSpare } from "spare-wallets-kit";
+
+const server = new Horizon.Server("https://horizon-testnet.stellar.org");
+const keypair = Keypair.fromSecret(process.env.SECRET!); // a testnet secret key (S...)
+
+// 1. The transaction your app already builds: pay 1 XLM to a (freshly funded) merchant.
+const merchant = Keypair.random();
+await fetch(`https://friendbot.stellar.org?addr=${merchant.publicKey()}`);
+const tx = new TransactionBuilder(await server.loadAccount(keypair.publicKey()), {
+  fee: BASE_FEE,
+  networkPassphrase: Networks.TESTNET,
+})
+  .addOperation(Operation.payment({ destination: merchant.publicKey(), asset: Asset.native(), amount: "1" }))
+  .setTimeout(60)
+  .build();
+
+// 2. A headless "wallet". The kit only needs a signTransaction(xdr, opts) that returns { signedTxXdr }.
+const signer = {
+  async signTransaction(xdr: string, opts?: { networkPassphrase?: string }) {
+    const toSign = TransactionBuilder.fromXDR(xdr, opts?.networkPassphrase ?? Networks.TESTNET);
+    toSign.sign(keypair);
+    return { signedTxXdr: toSign.toXDR() };
+  },
+};
+
+// 3. Spare wraps it. A custom `confirm` replaces the browser modal: return true only on an explicit yes.
+const spare = withSpare(signer, {
+  foundation: { account: "GCAEBBLSVFM2RLNBYMEZLFWHCXFHOGVJAXQK2K3WVHS2UGVDVWJOXGQJ", domain: "donatespare.xyz" },
+  foundationName: "Spare demo foundation",
+  mode: { amount: "0.50" },
+  appId: "quickstart",
+  maxAmount: "5",
+  accounts: new HorizonAccountPort({ network: "testnet" }),
+  network: "testnet",
+  confirm: async (prompt) => {
+    console.log(`Add US$${prompt.amount} for ${prompt.foundationName}? (auto-yes in this demo)`);
+    return true;
+  },
+});
+
+// Pass the passphrase so the kit can parse the XDR.
+const result = await spare.signWithDonation(tx.toXDR(), { networkPassphrase: Networks.TESTNET });
+console.log(result.outcome, result.reason ?? "", "changed:", result.changed);
+// "donated": changed is true and the signed tx carries the donation.
+// "declined" | "not-offered" | "passthrough" | "error": the original tx was signed.
+
+// 4. Submitting is your job.
+const signed = TransactionBuilder.fromXDR(result.signedTxXdr, Networks.TESTNET);
+console.log("submitted:", (await server.submitTransaction(signed)).hash);
+```
+
+When your version infers the network from the passphrase, `network` is optional; passing it always works.
 
 ## Soroban follow-up
 

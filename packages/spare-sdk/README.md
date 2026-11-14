@@ -4,7 +4,13 @@ Add a per-transaction USDC micro-donation to any Stellar app. The donation goes 
 
 ```
 pnpm add spare-sdk @stellar/stellar-sdk
+npm install spare-sdk @stellar/stellar-sdk
+yarn add spare-sdk @stellar/stellar-sdk
 ```
+
+ESM only, Node 20 or newer: in a Node project set `"type": "module"` in `package.json`.
+
+To try it on testnet, use `network: "testnet"` with the demo foundation `{ account: "GCAEBBLSVFM2RLNBYMEZLFWHCXFHOGVJAXQK2K3WVHS2UGVDVWJOXGQJ", domain: "donatespare.xyz" }`. It is not a charity: testnet donations are demo funds that return to the Spare builder. The [quick start](https://donatespare.xyz/docs/quick-start/) has a runnable end-to-end script and a testnet USDC funding recipe.
 
 ## Classic transaction: `addDonation`
 
