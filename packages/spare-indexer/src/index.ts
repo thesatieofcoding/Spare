@@ -10,3 +10,4 @@ export { serializeSnapshot, type SnapshotV1, type FoundationData } from "./domai
 export { assertNoDonorAddresses } from "./domain/privacy.js";
 export type { RpcPort, HorizonPort, DomainVerifier, ClockPort, SnapshotStore, Cursor } from "./ports.js";
 export { parseConfig, EXIT, type IndexerConfig, type SeedAccount, type ConfigResult } from "./config.js";
+export { runIndex, type IndexDeps, type IndexResult } from "./app/index-run.js";
