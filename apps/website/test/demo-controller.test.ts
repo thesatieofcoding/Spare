@@ -23,6 +23,9 @@ interface Opts {
   prepare?: (x: string) => Promise<string>;
   send?: (x: string) => Promise<{ hash: string }>;
   followUp?: SpareSigner["offerFollowUp"];
+  lookup?: (x: string) => Promise<{ hash: string } | null>;
+  ledger?: number;
+  followUpWindowMs?: number;
   cfg?: DemoConfig;
 }
 
@@ -41,11 +44,15 @@ function setup(o: Opts = {}) {
   const ports: NetworkPorts = {
     passphrase: PASS,
     wallet: { connect: o.wallet ?? (async () => ({ address: USER, wallet: "classic" as const })) },
-    horizon: { submit: o.horizonSubmit ?? (async (x) => { submitted.push(x); return { hash: x === "SIGNED_DONATION" ? "HDON" : "HMAIN" }; }) },
+    horizon: {
+      submit: o.horizonSubmit ?? (async (x) => { submitted.push(x); return { hash: x === "SIGNED_DONATION" ? "HDON" : "HMAIN" }; }),
+      ...(o.lookup && { lookup: o.lookup }),
+    },
     rpc: o.rpc === false ? null : {
       prepare: o.prepare ?? (async (x) => `PREPARED(${x})`),
       send: o.send ?? (async () => ({ hash: "HSOR" })),
       getStatus: vi.fn(async () => statuses.shift() ?? "NOT_FOUND"),
+      ...(o.ledger !== undefined && { getLedger: vi.fn(async () => o.ledger as number) }),
     },
     builder: {
       buildClassicPayment: vi.fn(async () => "XDR_CLASSIC"),
@@ -57,6 +64,9 @@ function setup(o: Opts = {}) {
   const c = createController({
     config: o.cfg ?? config(), loadPorts, initialNetwork: "testnet",
     sleep: async () => {}, pollIntervalMs: 0, maxPolls: 3,
+    // Fake clock: every read advances 1 s, so the follow-up window elapses without real waiting.
+    now: (() => { let t = 0; return () => (t += 1000); })(),
+    ...(o.followUpWindowMs !== undefined && { followUpWindowMs: o.followUpWindowMs }),
   });
   const states: DemoState[] = [];
   c.subscribe((s) => states.push(s));
@@ -247,6 +257,72 @@ describe("soroban flow", () => {
     expect(submit).toHaveBeenCalledTimes(1);
     expect(t.c.getState()).toMatchObject({
       status: "done", result: { mainHash: "HSOR", outcome: "follow-up-failed", reason: "tx_failed" },
+    });
+  });
+
+  it("passes the main tx ledger to the follow-up so Horizon can be waited for", async () => {
+    const t = await ready({ ledger: 321 });
+    await t.c.start("soroban");
+    expect(t.offerFollowUp).toHaveBeenCalledWith(
+      { successful: true, sourceAccount: USER, hash: "HSOR", ledger: 321 }, { address: USER, networkPassphrase: PASS },
+    );
+  });
+
+  it("a ledger lookup failure does not block the follow-up", async () => {
+    const t = await ready();
+    (t.ports.rpc as unknown as { getLedger?: () => Promise<number> }).getLedger = async () => { throw new Error("boom"); };
+    await t.c.start("soroban");
+    expect(t.offerFollowUp).toHaveBeenCalledWith({ successful: true, sourceAccount: USER, hash: "HSOR" }, expect.anything());
+  });
+
+  describe("follow-up submit timeout (504 / network error)", () => {
+    const timeout = () => vi.fn(async () => { throw new PortError("submit-failed", "Gateway Timeout", true); });
+    it("looks the hash up and reports success when it landed", async () => {
+      const lookup = vi.fn(async (_x: string) => ({ hash: "HFOUND" }));
+      const t = await ready({ horizonSubmit: timeout(), lookup });
+      await t.c.start("soroban");
+      expect(lookup).toHaveBeenCalledWith("SIGNED_DONATION");
+      expect(t.c.getState()).toMatchObject({
+        status: "done", result: { mainHash: "HSOR", donationHash: "HFOUND", outcome: "donated", donationAmount: "0.5000000" },
+      });
+    });
+    it("keeps looking for a few rounds before giving up", async () => {
+      let n = 0;
+      const lookup = vi.fn(async () => (++n < 3 ? null : { hash: "HLATE" }));
+      const t = await ready({ horizonSubmit: timeout(), lookup });
+      await t.c.start("soroban");
+      expect(lookup).toHaveBeenCalledTimes(3);
+      expect(t.c.getState()).toMatchObject({ status: "done", result: { donationHash: "HLATE", outcome: "donated" } });
+    });
+    it("keeps polling until the follow-up's own timebound has passed, so a late landing is not reported as failed", async () => {
+      let n = 0;
+      const lookup = vi.fn(async () => (++n < 100 ? null : { hash: "HVERYLATE" }));
+      const t = await ready({ horizonSubmit: timeout(), lookup });
+      await t.c.start("soroban");
+      expect(lookup).toHaveBeenCalledTimes(100);
+      expect(t.c.getState()).toMatchObject({ status: "done", result: { donationHash: "HVERYLATE", outcome: "donated" } });
+    });
+    it("gives up (follow-up-failed) only once the window has elapsed", async () => {
+      const lookup = vi.fn(async () => null);
+      const t = await ready({ horizonSubmit: timeout(), lookup, followUpWindowMs: 10_000 });
+      await t.c.start("soroban");
+      expect(lookup.mock.calls.length).toBeGreaterThan(3);
+      expect(lookup.mock.calls.length).toBeLessThan(15);
+      expect(t.c.getState()).toMatchObject({ status: "done", result: { outcome: "follow-up-failed" } });
+    });
+    it("reports follow-up-failed when it never landed or the lookup itself fails", async () => {
+      for (const lookup of [vi.fn(async () => null), vi.fn(async () => { throw new Error("down"); })]) {
+        const t = await ready({ horizonSubmit: timeout(), lookup });
+        await t.c.start("soroban");
+        expect(t.c.getState()).toMatchObject({ status: "done", result: { mainHash: "HSOR", outcome: "follow-up-failed" } });
+      }
+    });
+    it("a definitive rejection is looked up once, not polled", async () => {
+      const lookup = vi.fn(async () => null);
+      const t = await ready({ horizonSubmit: vi.fn(async () => { throw new PortError("submit-failed", "tx_failed"); }), lookup });
+      await t.c.start("soroban");
+      expect(lookup).toHaveBeenCalledTimes(1);
+      expect(t.c.getState()).toMatchObject({ result: { outcome: "follow-up-failed", reason: "tx_failed" } });
     });
   });
 

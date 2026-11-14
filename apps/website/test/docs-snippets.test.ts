@@ -1,6 +1,9 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { INSTALL_COMMAND, addDonationSnippet, donateAfterSnippet, kitSnippet, soroban } from "../src/lib/docs-snippets";
+import {
+  INSTALL_COMMAND, INSTALL_NPM, INSTALL_YARN, addDonationSnippet, donateAfterSnippet, kitSnippet, signWithDonationSnippet,
+  soroban, testnetDonateSnippet, testnetFundSnippet,
+} from "../src/lib/docs-snippets";
 
 const rootReadme = readFileSync(new URL("../../../README.md", import.meta.url), "utf8");
 const sdkReadme = readFileSync(new URL("../../../packages/spare-sdk/README.md", import.meta.url), "utf8");
@@ -74,6 +77,49 @@ describe("docs snippets stay in sync with the published API", () => {
       const text = JSON.stringify(doc);
       expect(text).toContain(JSON.stringify(addDonationSnippet).slice(1, -1));
       expect(text).toContain(JSON.stringify(donateAfterSnippet).slice(1, -1));
+    }
+  });
+
+  const region = (file: string, name: string) => {
+    const src = readFileSync(new URL(`../../../examples/quickstart/src/${file}`, import.meta.url), "utf8");
+    return src.match(new RegExp(`^// #region ${name}\\n([\\s\\S]*?)\\n// #endregion ${name}$`, "m"))?.[1];
+  };
+  it("npm and yarn install lines install the same packages as the pnpm one", () => {
+    const pkgs = INSTALL_COMMAND.replace("pnpm add ", "");
+    expect(INSTALL_NPM).toBe(`npm install ${pkgs}`);
+    expect(INSTALL_YARN).toBe(`yarn add ${pkgs}`);
+  });
+  it("testnet fund and donate snippets are the typechecked example files, verbatim", () => {
+    expect(region("testnet-fund.ts", "testnet-fund")).toBe(testnetFundSnippet);
+    expect(region("testnet-donate.ts", "testnet-donate")).toBe(testnetDonateSnippet);
+  });
+  it("testnet snippets use the real demo foundation and Circle testnet USDC", () => {
+    expect(testnetDonateSnippet).toContain("GCAEBBLSVFM2RLNBYMEZLFWHCXFHOGVJAXQK2K3WVHS2UGVDVWJOXGQJ");
+    expect(testnetDonateSnippet).toContain('domain: "donatespare.xyz"');
+    expect(testnetDonateSnippet).toContain('network: "testnet"');
+    expect(testnetDonateSnippet).toContain("signWithDonation(");
+    expect(testnetFundSnippet).toContain("GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5");
+    expect(testnetFundSnippet).toContain("pathPaymentStrictReceive");
+    expect(testnetFundSnippet).toContain("friendbot");
+  });
+  it("wallets-kit README carries the same Node example", () => {
+    expect(kitReadme).toContain(testnetDonateSnippet);
+    expect(kitReadme).toContain("outcome");
+  });
+  it("signWithDonation snippet reads outcome and submits the signed xdr", () => {
+    for (const needle of ["signWithDonation(", "result.outcome", "result.changed", "submitTransaction("]) {
+      expect(signWithDonationSnippet).toContain(needle);
+    }
+  });
+  it("quick start (both locales) carries the testnet block, install variants and outcome snippet", async () => {
+    const { enDocs } = await import("../src/i18n/docs/en");
+    const { esDocs } = await import("../src/i18n/docs/es");
+    for (const doc of [enDocs["quick-start"], esDocs["quick-start"]]) {
+      const codes = doc.blocks.flatMap((b) => (b.t === "code" ? [b.code] : []));
+      for (const c of [INSTALL_NPM, INSTALL_COMMAND, INSTALL_YARN, testnetFundSnippet, testnetDonateSnippet, signWithDonationSnippet]) {
+        expect(codes).toContain(c);
+      }
+      expect(doc.blocks.some((b) => b.t === "h2" && b.id === "testnet")).toBe(true);
     }
   });
 });

@@ -5,7 +5,9 @@
 VERSION = "2.0.0"
 
 ACCOUNTS = [
+  # Testnet: the demo foundation used by the quick start (demo funds, not a charity).
   "GCAEBBLSVFM2RLNBYMEZLFWHCXFHOGVJAXQK2K3WVHS2UGVDVWJOXGQJ",
+  # Mainnet: the Spare demo foundation account.
   "GBTDED5SE2QAKFQ3Y6NY75QGCKQTQ3Z6H3ZYM4PWUX3X36QMOKEEJFPQ",
 ]
 

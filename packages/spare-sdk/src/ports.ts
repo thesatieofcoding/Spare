@@ -7,6 +7,11 @@ export type FetchLike = (input: string | URL | Request, init?: RequestInit) => P
 export interface AccountSnapshot {
   /** Current sequence number (the next tx uses sequence + 1). */
   sequence: string;
+  /**
+   * Latest ledger the data source had ingested when this view was read (Horizon `Latest-Ledger` /
+   * `history_latest_ledger`), when the port knows. NOT the account entry's last-modified ledger.
+   */
+  ledger?: number;
   /** XLM spendable on fees: balance minus reserve and selling liabilities. */
   xlmAvailable: bigint;
   /** Circle-USDC trustline, or null when there is none. */

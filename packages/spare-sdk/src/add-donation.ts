@@ -3,9 +3,10 @@ import {
 } from "@stellar/stellar-sdk";
 import { formatStroops, parseUsdc, roundUpToWholeDollar, toStroops } from "./amount.js";
 import { memoFor } from "./app-id.js";
-import { USDC_CODE } from "./constants.js";
+import { MAX_TX_FEE, USDC_CODE } from "./constants.js";
 import { checkEligibility } from "./eligibility.js";
 import { perOpFee } from "./fee.js";
+import { hasRequiredOptions } from "./options.js";
 import { isNetwork, NETWORKS } from "./network.js";
 import type { AccountPort, AccountSnapshot } from "./ports.js";
 import { canSignAlone, requiredThreshold } from "./signing.js";
@@ -73,6 +74,7 @@ export async function addDonation(
   const t = tx as Transaction;
   const no = (reason: NotOfferedReason): DonationResult => ({ status: "not-offered", reason, transaction: t });
 
+  if (!hasRequiredOptions(opts)) return no("invalid-options");
   if ((opts.amount === undefined) === (opts.roundUp !== true)) return no("invalid-options");
 
   const networkName = opts.network ?? "mainnet";
@@ -81,9 +83,13 @@ export async function addDonation(
   if (t.networkPassphrase !== network.passphrase) return no("network-mismatch");
   if (opts.accounts.network !== undefined && opts.accounts.network !== networkName) return no("network-mismatch");
 
+  if (t.operations.length === 0) return no("invalid-options"); // nothing to price a fee from
+
   const feeFallback = (BigInt(t.fee) + BigInt(t.operations.length) - 1n) / BigInt(t.operations.length);
   const perOp = perOpFee(opts.baseFee, feeFallback);
   if (perOp === null) return no("invalid-options");
+  // The total fee is a uint32 on the wire: a huge rate would make build() throw.
+  if (perOp * (BigInt(t.operations.length) + 1n) > MAX_TX_FEE) return no("invalid-options");
 
   const spend = analyzeSpend(t.operations, network.usdcIssuer);
   if (spend.unsupported) return no("unsupported-operation");

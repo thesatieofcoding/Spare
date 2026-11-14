@@ -345,6 +345,45 @@ describe("withSpare: network option", () => {
     expect(kit.signTransaction.mock.calls[0]?.[0]).toBe(xdr);
   });
 
+  describe("network inferred from the passphrase", () => {
+    const opts = (over: Record<string, unknown> = {}) =>
+      baseOptions({ confirm: confirmFn(true), networkPassphrase: undefined, accounts: world(), ...over }) as never;
+
+    it("a testnet passphrase passed to signTransaction, with no network option, offers on testnet", async () => {
+      const r = await withSpare(fakeKit(), opts()).signWithDonation(testnetTx().toXDR(), { networkPassphrase: Networks.TESTNET });
+      expect(r).toMatchObject({ outcome: "donated", changed: true });
+      const sent = TransactionBuilder.fromXDR(signedXdr(r.signedTxXdr), Networks.TESTNET) as Transaction;
+      expect((sent.operations[1] as Operation.Payment).asset.getIssuer()).toBe(TESTNET_ISSUER);
+    });
+
+    it("the same goes for an app-level networkPassphrase", async () => {
+      const r = await withSpare(fakeKit(), opts({ networkPassphrase: Networks.TESTNET })).signWithDonation(testnetTx().toXDR());
+      expect(r.outcome).toBe("donated");
+    });
+
+    it("an explicit network option wins over the passphrase", async () => {
+      const r = await withSpare(fakeKit(), opts({ network: "mainnet" }))
+        .signWithDonation(testnetTx().toXDR(), { networkPassphrase: Networks.TESTNET });
+      expect(r).toMatchObject({ changed: false, outcome: "not-offered", reason: "network-mismatch" });
+    });
+
+    it("an unknown passphrase is not inferred: signed unchanged, as before", async () => {
+      const xdr = new TransactionBuilder(new Account(user.publicKey(), "100"), { fee: BASE_FEE, networkPassphrase: "Private net" })
+        .setTimeout(60).addOperation(Operation.payment({ destination: merchant.publicKey(), asset: Asset.native(), amount: "1" })).build().toXDR();
+      const kit = fakeKit();
+      const r = await withSpare(kit, opts()).signWithDonation(xdr, { networkPassphrase: "Private net" });
+      expect(r).toMatchObject({ changed: false, donation: null });
+      expect(kit.signTransaction.mock.calls[0]?.[0]).toBe(xdr);
+    });
+
+    it("the Soroban follow-up infers the network too", async () => {
+      const r = await withSpare(fakeKit(), opts()).offerFollowUp(
+        { successful: true, sourceAccount: user.publicKey(), hash: "abc" }, { networkPassphrase: Networks.TESTNET },
+      );
+      expect(r.status).toBe("signed");
+    });
+  });
+
   it("the Soroban follow-up honors network 'testnet'", async () => {
     const r = await withSpare(
       fakeKit(), baseOptions({ confirm: confirmFn(true), network: "testnet", networkPassphrase: undefined }) as never,

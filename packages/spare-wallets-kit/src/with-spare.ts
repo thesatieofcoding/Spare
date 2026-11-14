@@ -30,6 +30,17 @@ function resolvePassphrase(opts: SignOptions, options: SpareOptions): string | u
     : undefined;
 }
 
+/**
+ * Network to hand to the SDK. An explicit `network` option wins; otherwise it is inferred from the
+ * effective passphrase when that is one of Spare's networks. An unknown passphrase infers nothing
+ * (the SDK then defaults to mainnet and reports network-mismatch, so the original is signed).
+ */
+function resolveNetwork(opts: SignOptions, options: SpareOptions): SpareOptions["network"] {
+  if (options.network !== undefined) return options.network;
+  const passphrase = opts.networkPassphrase ?? options.networkPassphrase;
+  return (Object.keys(NETWORKS) as (keyof typeof NETWORKS)[]).find((n) => NETWORKS[n].passphrase === passphrase);
+}
+
 const isLedger = (id: string | undefined) => id !== undefined && /ledger/i.test(id);
 
 /**
@@ -78,12 +89,13 @@ export function withSpare(kit: SignerLike, options: SpareOptions): SpareSigner {
       if (!passphrase) return { kind: "original", outcome: "error", reason: "missing-network-passphrase" };
       const tx = TransactionBuilder.fromXDR(xdr, passphrase);
       const roundUp = "roundUp" in options.mode;
+      const network = resolveNetwork(opts, options);
       const r = await addDonation(tx, {
         foundation: options.foundation,
         appId: options.appId,
         maxAmount: options.maxAmount,
         accounts: options.accounts,
-        ...(options.network !== undefined && { network: options.network }),
+        ...(network !== undefined && { network }),
         ...(options.fetch && { fetch: options.fetch }),
         ...(options.baseFee !== undefined && { baseFee: options.baseFee }),
         ...("amount" in options.mode ? { amount: options.mode.amount } : { roundUp: true }),
@@ -121,12 +133,13 @@ export function withSpare(kit: SignerLike, options: SpareOptions): SpareSigner {
       if (amount === undefined) return { status: "skipped", reason: "no-follow-up-amount" };
       if (!resolvePassphrase(opts, options)) return { status: "skipped", reason: "missing-network-passphrase" };
       const explicit = opts.networkPassphrase ?? options.networkPassphrase;
+      const network = resolveNetwork(opts, options);
       const r = await donateAfter(main, {
         foundation: options.foundation,
         appId: options.appId,
         maxAmount: options.maxAmount,
         accounts: options.accounts,
-        ...(options.network !== undefined && { network: options.network }),
+        ...(network !== undefined && { network }),
         ...(options.fetch && { fetch: options.fetch }),
         ...(options.baseFee !== undefined && { baseFee: options.baseFee }),
         amount,

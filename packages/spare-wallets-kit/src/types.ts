@@ -91,6 +91,10 @@ export interface MainTxResult {
   successful: boolean;
   sourceAccount: string;
   hash?: string;
+  /** Ledger the main tx closed in. Lets the follow-up wait until Horizon has caught up. */
+  ledger?: number;
+  /** Sequence the main tx used; alternative to `ledger`. */
+  sequence?: string;
 }
 
 export interface SpareSigner {

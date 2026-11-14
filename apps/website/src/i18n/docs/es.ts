@@ -1,4 +1,7 @@
-import { INSTALL_COMMAND, addDonationSnippet, donateAfterSnippet, kitSnippet, soroban } from "../../lib/docs-snippets";
+import {
+  INSTALL_COMMAND, INSTALL_NPM, INSTALL_YARN, addDonationSnippet, donateAfterSnippet, kitSnippet,
+  signWithDonationSnippet, soroban, testnetDonateSnippet, testnetFundSnippet,
+} from "../../lib/docs-snippets";
 import type { DocsContent, FaqItem } from "./types";
 
 const SDK_INSTALL = "pnpm add spare-sdk @stellar/stellar-sdk";
@@ -68,19 +71,33 @@ export const esDocs: DocsContent = {
   "quick-start": {
     title: "Guía rápida",
     metaTitle: "Guía rápida — Documentación de Spare",
-    lead: "Añade la pregunta del vuelto a tu app en Stellar. Este recorrido cubre la instalación del SDK, el kit de wallets y la primera prueba del flujo de confirmación.",
+    lead: "Añade la pregunta del vuelto a tu app en Stellar. Primero pruébalo de punta a punta en testnet con la fundación de demo, y luego apúntalo a una fundación real.",
     blocks: [
-      { t: "code", code: INSTALL_COMMAND, label: "Instalar" },
       { t: "h2", id: "install", text: "1. Instala los paquetes", toc: "Instalar" },
-      { t: "p", text: "Agrega spare-sdk y spare-wallets-kit a tu app. El kit abre la confirmación en wallets como Freighter, LOBSTR o Ledger." },
-      { t: "h2", id: "add-the-kit", text: "2. Haz la pregunta al firmar", toc: "Añadir el kit" },
-      { t: "p", text: "Antes de la firma, muestra la opción de sumar un poco o redondear para una fundación del registro." },
+      { t: "p", text: "Agrega spare-sdk y spare-wallets-kit a tu app. El kit abre la confirmación en wallets como Freighter, LOBSTR o Ledger. Ambos paquetes son solo ESM y piden Node 20 o superior: en un proyecto Node pon `\"type\": \"module\"` en el `package.json`." },
+      { t: "code", code: INSTALL_NPM, label: "npm" },
+      { t: "code", code: INSTALL_COMMAND, label: "pnpm" },
+      { t: "code", code: INSTALL_YARN, label: "yarn" },
+      { t: "h2", id: "testnet", text: "2. Pruébalo en testnet", toc: "Probar en testnet" },
+      { t: "callout", id: "demo-foundation", title: "La fundación de demo no es una caridad.", body: "Las donaciones en testnet van a la fundación de demo `GCAEBBLSVFM2RLNBYMEZLFWHCXFHOGVJAXQK2K3WVHS2UGVDVWJOXGQJ` (dominio `donatespare.xyz`). Son fondos de prueba que vuelven a quien construye Spare. Úsala solo para probar el flujo; en producción pasas una fundación real y registrada." },
+      { t: "h3", text: "Consigue USDC de testnet" },
+      { t: "p", text: "Necesitas una cuenta de testnet con el USDC de testnet de Circle (emisor `GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5`). Crea una con `stellar keys generate my-user --network testnet --fund` y lee la clave secreta con `stellar keys secret my-user`, o deja que Friendbot fondee cualquier par de claves. El script de abajo la fondea, agrega la trustline de USDC y cambia XLM por 5 USDC en el DEX de testnet." },
+      { t: "code", code: testnetFundSnippet, label: "fund.ts" },
+      { t: "h3", text: "Corre una donación de punta a punta" },
+      { t: "p", text: "Este script de Node arma un pago, le pide a Spare una donación de US$0,50 para la fundación de demo, firma y envía a Horizon. El `signer` sin interfaz hace de wallet y `confirm` hace de modal. Guárdalo como `donate.ts` y córrelo con `SECRET=S... npx tsx donate.ts`." },
+      { t: "code", code: testnetDonateSnippet, label: "donate.ts" },
+      { t: "p", text: "Deberías ver `donated changed: true` y el hash de una transacción. Ábrela en un explorador de testnet: tras el pago hay otro pago de 0,50 USDC a la fundación de demo, con el memo `spare:quickstart`." },
+      { t: "h2", id: "add-the-kit", text: "3. Haz la pregunta al firmar", toc: "Añadir el kit" },
+      { t: "p", text: "En una app de navegador, envuelve Stellar Wallets Kit. Antes de la firma, la persona ve la opción de sumar un poco o redondear para una fundación. El ejemplo de abajo tiene la forma de producción: reemplaza los marcadores `G...` y `foundation.org` por la cuenta registrada de tu fundación y el dominio de su sitio, y `network` por `\"mainnet\"`." },
       { t: "h3", text: "Transacciones clásicas" },
-      { t: "code", code: kitSnippet("es"), label: "Transacciones clásicas" },
+      { t: "code", code: kitSnippet("es"), label: "Producción (marcadores)" },
+      { t: "p", text: "`network` es opcional si le pasas a `signTransaction` el passphrase de testnet o de mainnet y tu versión de `spare-wallets-kit` infiere la red a partir de él. Pasarla explícitamente siempre funciona." },
+      { t: "p", text: "¿Necesitas saber si el hash cambió, o por qué no se ofreció nada? Usa `signWithDonation` en vez de `signTransaction`: devuelve `{ signedTxXdr, donation, changed, outcome, reason? }`. El `outcome` es `donated`, `declined`, `not-offered`, `passthrough` o `error`, y todos salvo `donated` firman tu transacción original." },
+      { t: "code", code: signWithDonationSnippet, label: "signWithDonation" },
       { t: "h3", text: "Llamadas Soroban" },
       { t: "code", code: soroban, label: "Llamadas Soroban" },
       { t: "p", text: "¿Construyes tu propia interfaz? Usa `addDonation` (clásicas) o `donateAfter` (Soroban) de [spare-sdk](doc:spare-sdk) directamente." },
-      { t: "h2", id: "try-the-flow", text: "3. Deja el registro a la vista", toc: "Probar el flujo" },
+      { t: "h2", id: "try-the-flow", text: "4. Deja el registro a la vista", toc: "Probar el flujo" },
       { t: "p", text: "El aporte va directo a la fundación. El indexador y el tablero publican el movimiento." },
       { t: "callout", id: "next-step", title: "Ellos deciden, siempre.", body: "La persona puede sumar un poco, cambiar el monto, o seguir sin aportar. Spare nunca custodia los fondos. El movimiento queda en el registro público." },
     ],
@@ -150,6 +167,7 @@ export const esDocs: DocsContent = {
           ["`insufficient-balance`", "No alcanza el USDC, o el XLM para la comisión más el XLM que envía la transacción."],
           ["`account-lookup-failed`", "No se pudo cargar la cuenta."],
           ["`main-tx-not-successful`", "Solo `donateAfter`: la transacción principal no resultó bien."],
+          ["`account-not-synced`", "Solo `donateAfter`: Horizon no alcanzó a la transacción principal a tiempo, así que no se armó nada."],
         ],
       },
       { t: "h2", id: "donation-info", text: "DonationInfo", toc: "DonationInfo" },

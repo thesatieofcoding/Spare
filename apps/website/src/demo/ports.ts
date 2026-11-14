@@ -12,7 +12,11 @@ export type PortErrorKind =
 
 /** Adapters throw this to say exactly what went wrong; anything else is mapped by the step. */
 export class PortError extends Error {
-  constructor(readonly kind: PortErrorKind, message: string = kind) {
+  /**
+   * `uncertain`: no definitive verdict from the network (timeout, 5xx, connection lost), so the
+   * tx may still have landed. Callers look the hash up before reporting a failure.
+   */
+  constructor(readonly kind: PortErrorKind, message: string = kind, readonly uncertain: boolean = false) {
     super(message);
     this.name = "PortError";
   }
@@ -26,6 +30,11 @@ export interface WalletPort {
 export interface HorizonPort {
   /** Submits a signed classic tx. Throws PortError submit-failed. */
   submit(signedXdr: string): Promise<{ hash: string }>;
+  /**
+   * Looks up a signed tx by its hash after an uncertain submit. Resolves `{ hash }` only when it
+   * landed successfully, null when Horizon does not know it (or it failed). May throw.
+   */
+  lookup?(signedXdr: string): Promise<{ hash: string } | null>;
 }
 
 export type TxStatus = "SUCCESS" | "FAILED" | "NOT_FOUND";
@@ -36,6 +45,8 @@ export interface RpcPort {
   /** Submits a signed Soroban tx. Throws PortError submit-failed. */
   send(signedXdr: string): Promise<{ hash: string }>;
   getStatus(hash: string): Promise<TxStatus>;
+  /** Ledger a confirmed tx closed in; lets the follow-up wait for Horizon to catch up. */
+  getLedger?(hash: string): Promise<number | undefined>;
 }
 
 export interface PaymentRequest {
