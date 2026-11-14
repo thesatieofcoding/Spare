@@ -66,3 +66,12 @@ jobs:
           targets: wasm32v1-none
       - run: cargo test -p spare-registry
       - run: cargo build -p spare-registry --release --target wasm32v1-none
+      - run: node scripts/check-registry-exports.mjs
+  scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test scripts/*.test.mjs
