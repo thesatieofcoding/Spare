@@ -79,8 +79,13 @@ fn validate_name(name: &String) -> Result<(), Error> {
     Ok(())
 }
 
-/// Bare domain: non-empty, <= 253 bytes, no '/' (so no scheme or path),
-/// no ASCII whitespace/control bytes.
+/// Max DNS label length, in bytes.
+const MAX_LABEL_BYTES: usize = 63;
+
+/// Lowercase ASCII hostname: 1..=253 bytes, only `a-z 0-9 . -`, at least two
+/// labels separated by `.`, each label 1..=63 bytes and not starting or ending
+/// with `-`. Rejects schemes, paths, ports, queries, userinfo, uppercase and
+/// non-ASCII, so each domain has exactly one stored form.
 fn validate_website(website: &String) -> Result<(), Error> {
     let len = website.len();
     if len == 0 || len > MAX_WEBSITE_BYTES {
@@ -89,8 +94,18 @@ fn validate_website(website: &String) -> Result<(), Error> {
     let mut buf = [0u8; MAX_WEBSITE_BYTES as usize];
     let buf = &mut buf[..len as usize];
     website.copy_into_slice(buf);
-    if buf.iter().any(|b| *b <= 0x20 || *b == 0x7f || *b == b'/') {
+    let allowed = |b: &u8| b.is_ascii_lowercase() || b.is_ascii_digit() || *b == b'.' || *b == b'-';
+    if !buf.iter().all(allowed) || !buf.contains(&b'.') {
         return Err(Error::InvalidWebsite);
+    }
+    for label in buf.split(|b| *b == b'.') {
+        let bad = label.is_empty()
+            || label.len() > MAX_LABEL_BYTES
+            || label[0] == b'-'
+            || label[label.len() - 1] == b'-';
+        if bad {
+            return Err(Error::InvalidWebsite);
+        }
     }
     Ok(())
 }

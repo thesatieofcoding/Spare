@@ -266,8 +266,38 @@ fn website_validation() {
     }
     let too_long = "w".repeat(254);
     assert_eq!(c.try_register(&a, &n, &s(&env, &too_long)), Err(Ok(Error::InvalidWebsite)));
-    let max = "w".repeat(253);
+    let max = std::format!("{}.{}.{}.{}", "a".repeat(63), "b".repeat(63), "c".repeat(63), "d".repeat(61));
+    assert_eq!(max.len(), 253);
     c.register(&a, &n, &s(&env, &max));
+}
+
+#[test]
+fn website_must_be_lowercase_hostname() {
+    let (env, c, _) = setup();
+    env.mock_all_auths();
+    let n = s(&env, "Uno");
+    for bad in [
+        "Uno.org", "UNO.ORG", "uno.org:8080", "uno.org?x=1", "user@uno.org", "uno.org#a",
+        "uno_org.org", "uno", ".uno.org", "uno.org.", "-uno.org", "uno.org-", "uno..org",
+        "uno.org\\", "unó.org", "a.-b.org", "a-.b.org", "uno.-org",
+    ] {
+        let a = Address::generate(&env);
+        assert_eq!(
+            c.try_register(&a, &n, &s(&env, bad)),
+            Err(Ok(Error::InvalidWebsite)),
+            "website {bad:?} should be rejected"
+        );
+    }
+    let long_label = std::format!("{}.org", "a".repeat(64));
+    let max_label = std::format!("{}.org", "a".repeat(63));
+    let a = Address::generate(&env);
+    assert_eq!(c.try_register(&a, &n, &s(&env, &long_label)), Err(Ok(Error::InvalidWebsite)));
+    c.register(&a, &n, &s(&env, &max_label));
+    for good in ["uno.org", "demo.donatespare.xyz", "my-ngo.co.ke", "123.example"] {
+        let a = Address::generate(&env);
+        c.register(&a, &n, &s(&env, good));
+        assert!(c.is_active(&a), "website {good:?} should be accepted");
+    }
 }
 
 #[test]
