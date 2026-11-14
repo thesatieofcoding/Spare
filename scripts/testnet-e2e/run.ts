@@ -373,7 +373,7 @@ async function main() {
 
   await scenario("e3. wallets-kit: donor picks a custom 0.33 USDC amount", async () => {
     const spare = withSpare(signer, {
-      ...kitOpts, quotes,
+      ...kitOpts, quotes, presets: ["0.10", "0.25", "0.50"], // explicit mode + presets: picker on
       confirm: async (p) => {
         const c = await p.choices?.select({ amount: "0.33", payWith: "usdc" });
         return c?.status === "offered";

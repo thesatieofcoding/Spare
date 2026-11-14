@@ -27,9 +27,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed (behavior / migration)
 
-1. `spare-wallets-kit`: `mode` is optional (default: the smallest preset). An existing `mode: { amount }` still
-   preselects that amount and is added to the presets, so a `confirm` that ignores `choices` behaves as before.
-2. `DonationInfo.payWith` is a new required field (always `"usdc"` unless you opt in to XLM).
+1. `spare-wallets-kit`: the amount/asset picker is opt-in for existing integrations. It is on when `presets` is
+   set or `mode` is omitted (default: the smallest preset). An explicit `mode` without `presets` keeps the 0.1.3
+   single-amount yes/no prompt (no `choices`, no "other amount" field).
+2. `DonationInfo.payWith` is a new optional field (absent means `"usdc"`).
+3. Paying in XLM, `withSpare` re-quotes live when the donor says yes and signs only if the new `sendMax` is within
+   the max shown; otherwise the original is signed with `outcome: "declined"`, `reason: "quote-changed"`. XLM
+   quotes are never cached; accounts and `stellar.toml` are read once per prompt.
+4. An XLM-paid donation next to a USDC purchase still requires the donor's authorized USDC trustline and balance
+   for the purchase. The donation shares the transaction with the purchase: a price move past `sendMax` fails both
+   (only the fee is spent).
+5. `HorizonPathQuotePort` throws when given a custom `horizon` URL without `network`.
+6. The modal accepts a decimal comma in Spanish only.
 
 ## [0.1.3] - 2026-11-14
 

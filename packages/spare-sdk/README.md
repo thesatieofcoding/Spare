@@ -64,6 +64,10 @@ const result = await addDonation(unsignedTx, {
 
 `HorizonPathQuotePort` keeps the cheapest path of at most 5 hops (stellar-core's limit). No path or a failed quote gives `not-offered` / `no-path`. `DonationInfo` adds `payWith` and, for XLM, `sendMax` / `sendMaxStroops` and `quotedXlm` / `quotedXlmStroops`. Your own `PathQuotePort` only needs `quoteXlmForUsdc(usdcStroops, usdcIssuer)` returning `{ sendAmount, path } | null`.
 
+**Price risk.** In `addDonation` the XLM-paid donation is an operation in the same transaction as the purchase. If the XLM price moves past `sendMax` before the transaction applies, the path payment fails (`PATH_PAYMENT_STRICT_RECEIVE_OVER_SENDMAX`) and so does the whole transaction, purchase included; nothing moves and only the fee is spent. Quote right before signing (`withSpare` re-quotes at confirm) and keep the transaction's timebound short. A purchase paid in USDC next to an XLM-paid donation still needs the donor's authorized USDC trustline and balance for the purchase.
+
+Known limitations: a donor with their own open offers on the XLM/USDC book can hit `PATH_PAYMENT_STRICT_RECEIVE_OFFER_CROSS_SELF`; Spare does not check the donor's offers. The quote is the cheapest path at that moment, not a guarantee of liquidity when the transaction applies. `HorizonPathQuotePort` needs an explicit `network` when you pass a custom `horizon` URL.
+
 Indexing: the payment shows up in Horizon `/accounts/{foundation}/payments` as `path_payment_strict_receive` (`amount` = USDC received), and in RPC unified events (CAP-67) as a USDC `transfer` from the donor to the foundation, so attribution by the `spare:<appId>` memo is unchanged.
 
 ### Networks
