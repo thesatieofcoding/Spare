@@ -13,6 +13,12 @@ contracts/*/test_snapshots/
 
 # Private: funding SOW (personal emails, wallet)
 instawards-sow-*.md
+spare-sow.md
+
+# Local env files (never commit)
+.env
+.env.*
+!.env.example
 
 # Local agent instructions
 CLAUDE.md
