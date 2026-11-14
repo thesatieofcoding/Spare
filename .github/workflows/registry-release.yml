@@ -1,0 +1,48 @@
+name: registry-release
+
+# Verified build of the Soroban registry contract (SEP-55).
+# Builds from the tagged commit with stellar-expert's soroban-build-workflow,
+# stamps `source_repo` + `home_domain` into the WASM metadata, publishes a
+# GitHub release with the WASM, attests it (actions/attest-build-provenance)
+# and registers the build with stellar.expert contract validation.
+#
+# Trigger: push a tag like registry-v0.1.0 (separate from the npm `v*` tags).
+# Deploy to mainnet ONLY the WASM attached to that release: its hash is the
+# one that traces back to this commit. A local build will not match.
+#
+# Pin: v25.1.0 at commit e43b241f114bcf02151c30d61088506c6ad3ae0b.
+# release.yml was reviewed at that SHA (checks out the caller's tagged commit,
+# builds from source, attests the same file it uploads). Re-review before
+# bumping the pin.
+
+on:
+  push:
+    tags: ["registry-v*"]
+
+permissions:
+  id-token: write
+  contents: write
+  attestations: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32v1-none
+      - run: cargo test -p spare-registry
+
+  release:
+    needs: test
+    uses: stellar-expert/soroban-build-workflow/.github/workflows/release.yml@e43b241f114bcf02151c30d61088506c6ad3ae0b
+    with:
+      package: spare-registry
+      release_name: ${{ github.ref_name }}
+      release_description: "Spare foundation registry, verified build of ${{ github.ref_name }}"
+      home_domain: donatespare.xyz
+    secrets:
+      release_token: ${{ secrets.GITHUB_TOKEN }}
