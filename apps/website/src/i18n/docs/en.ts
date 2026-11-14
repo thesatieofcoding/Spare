@@ -1,32 +1,7 @@
-import { INSTALL_COMMAND, kitSnippet, soroban } from "../../lib/docs-snippets";
+import { INSTALL_COMMAND, addDonationSnippet, donateAfterSnippet, kitSnippet, soroban } from "../../lib/docs-snippets";
 import type { DocsContent, FaqItem } from "./types";
 
 const SDK_INSTALL = "pnpm add spare-sdk @stellar/stellar-sdk";
-
-const ADD_DONATION = `import { addDonation, HorizonAccountPort } from "spare-sdk";
-
-const result = await addDonation(unsignedTx, {
-  foundation: { account: "G...", domain: "foundation.org" }, // must be listed in its stellar.toml
-  amount: "0.50",            // or: roundUp: true (only when the purchase is USDC)
-  appId: "my-app",           // <= 22 ASCII bytes, memo becomes "spare:my-app"
-  maxAmount: "5",            // your cap per donation
-  accounts: new HorizonAccountPort("https://horizon.stellar.org"),
-});
-
-switch (result.status) {
-  case "offered":      // ask the user "Add US$<result.donation.amount>?", then sign result.transaction
-  case "not-offered":  // sign the original tx; result.reason says why (e.g. "insufficient-balance")
-  case "passthrough":  // signed / fee-bump / multisig / extra signers / Soroban: sign the original tx
-}`;
-
-const DONATE_AFTER = `import { donateAfter } from "spare-sdk";
-
-const follow = await donateAfter(
-  { successful: true, sourceAccount: userAccount, hash },
-  { foundation, amount: "0.50", appId: "my-app", maxAmount: "5",
-    accounts, networkPassphrase: Networks.PUBLIC },
-);
-if (follow.status === "offered") { /* confirm, then sign follow.transaction */ }`;
 
 const TOML = `ACCOUNTS=["G..."]   # the foundation account registered in the Spare registry`;
 
@@ -68,7 +43,7 @@ export const enDocs: DocsContent = {
         items: [
           "The user always decides. Nothing is added without an explicit yes. Declining signs the original transaction, byte for byte.",
           "No custody. Funds go from the user to the foundation in a normal Stellar payment.",
-          "Circle USDC only (`GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN`). Look-alike assets are rejected.",
+          "Circle USDC only: mainnet issuer `GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN`, testnet issuer `GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5`. Look-alike assets are rejected.",
           "Domain-verified foundations only. “Domain-verified” means the account is listed on that website's `stellar.toml`, nothing more.",
           "Never blocks a payment. If a check fails (no trustline, low balance, over your cap, unverified foundation) no donation is offered. If anything inside Spare errors, the original transaction is signed.",
           "Safe pass-through. Partly signed, multisig, fee-bump and Soroban transactions are never modified.",
@@ -119,14 +94,14 @@ export const enDocs: DocsContent = {
       { t: "code", code: SDK_INSTALL, label: "Install" },
       { t: "p", text: "`@stellar/stellar-sdk` is a peer dependency: install it next to `spare-sdk` (one copy shared with your app)." },
       { t: "h2", id: "add-donation", text: "Classic transaction: addDonation", toc: "addDonation" },
-      { t: "code", code: ADD_DONATION, label: "addDonation" },
+      { t: "code", code: addDonationSnippet, label: "addDonation" },
       { t: "p", text: "`offered` returns a new unsigned transaction (new hash, fee raised by one operation, memo set only if it was empty and no destination requires one). Nothing is added without the user's explicit yes." },
       { t: "h2", id: "round-up", text: "Round-up" },
       { t: "p", text: "Only when the whole transaction is a Circle-USDC purchase (payments, `pathPaymentStrictSend`, sell offers). The SDK reports what it used, so show these instead of recomputing: `donation.purchase` / `purchaseStroops` (the USDC purchase) and `roundedTotal` / `roundedTotalStroops` (purchase plus donation). They are set on round-up only." },
       { t: "list", items: ["Already whole (for example 5.00): `round-up-already-whole`.", "`pathPaymentStrictReceive`, XLM or other-asset operations, or unmodelled operations in the same transaction: `round-up-needs-usdc-purchase` (the real spend is unknown up front, so Spare never rounds `sendMax`)."] },
       { t: "h2", id: "donate-after", text: "Soroban call: donateAfter", toc: "donateAfter" },
       { t: "p", text: "A Soroban transaction holds one operation, so the donation is a separate payment after success. It needs a second signature: tell the user before they accept." },
-      { t: "code", code: DONATE_AFTER, label: "donateAfter" },
+      { t: "code", code: donateAfterSnippet, label: "donateAfter" },
       { t: "p", text: "The follow-up is a single payment (medium threshold). If the user's account needs more than its master key to sign that, nothing is offered (`multisig`)." },
       { t: "h2", id: "results", text: "Results and reason codes", toc: "Reason codes" },
       {
@@ -162,6 +137,7 @@ export const enDocs: DocsContent = {
           ["`invalid-foundation`", "The foundation is malformed."],
           ["`amount-over-cap`", "The donation is above your `maxAmount`."],
           ["`round-up-needs-usdc-purchase`", "Round-up needs a Circle-USDC purchase (see above)."],
+          ["`network-mismatch`", "The transaction was built for a different network than `network`."],
           ["`round-up-already-whole`", "The purchase is already a whole amount."],
           ["`foundation-not-verified`", "The foundation account is not listed in its website's `stellar.toml`."],
           ["`foundation-trustline-missing`", "The foundation has no USDC trustline."],
@@ -266,7 +242,8 @@ export const enDocs: DocsContent = {
           ["`maxAmount`", "yes", "Your cap per donation, in USDC."],
           ["`accounts`", "yes", "`AccountPort` from spare-sdk (for example `HorizonAccountPort`)."],
           ["`fetch`", "no", "Custom fetch for `stellar.toml` lookups."],
-          ["`networkPassphrase`", "no", "Used to parse XDR when the call does not pass one. Without either, the transaction is signed unchanged."],
+          ["`network`", "no", "`\"mainnet\"` (default) or `\"testnet\"`. Selects the Circle USDC issuer; a transaction from another network is signed unchanged."],
+          ["`networkPassphrase`", "no", "Used to parse XDR when the call does not pass one. Defaults to the passphrase of `network`. With neither, the tx is signed unchanged."],
           ["`confirm`", "no", "`(prompt: DonationPrompt) => Promise<boolean>`. Replaces the built-in modal."],
           ["`locale` / `theme`", "no", "`\"en\" | \"es\"`; `\"light\" | \"dark\" | \"auto\"` for the built-in modal."],
           ["`wallet`", "no", "Wallet id (or getter). Defaults to `kit.selectedModule.productId`. `LEDGER` shows the “check your Ledger” note."],

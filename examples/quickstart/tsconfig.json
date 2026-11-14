@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM"],
+    "types": ["node"],
+    "paths": {
+      "spare-sdk": ["../../packages/spare-sdk/src/index.ts"],
+      "spare-wallets-kit": ["../../packages/spare-wallets-kit/src/index.ts"]
+    }
+  },
+  "include": ["src", "test", "vitest.config.ts"]
+}

@@ -45,6 +45,18 @@ jobs:
       - run: pnpm -C apps/website check
       - run: pnpm -C apps/website test
       - run: pnpm -C apps/website build
+  examples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -C examples/quickstart typecheck
+      - run: pnpm -C examples/quickstart test
   registry:
     runs-on: ubuntu-latest
     steps:

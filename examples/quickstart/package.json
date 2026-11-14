@@ -1,0 +1,23 @@
+{
+  "name": "@spare/example-quickstart",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The docs quickstart, run in CI against fakes (no network). Not published.",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "spare-sdk": "workspace:^",
+    "spare-wallets-kit": "workspace:^"
+  },
+  "devDependencies": {
+    "@creit.tech/stellar-wallets-kit": "^2.8.0",
+    "@stellar/stellar-sdk": "^17.4.0",
+    "@types/node": "^22.0.0",
+    "happy-dom": "^18.0.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}

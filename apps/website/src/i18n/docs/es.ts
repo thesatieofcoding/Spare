@@ -1,32 +1,7 @@
-import { INSTALL_COMMAND, kitSnippet, soroban } from "../../lib/docs-snippets";
+import { INSTALL_COMMAND, addDonationSnippet, donateAfterSnippet, kitSnippet, soroban } from "../../lib/docs-snippets";
 import type { DocsContent, FaqItem } from "./types";
 
 const SDK_INSTALL = "pnpm add spare-sdk @stellar/stellar-sdk";
-
-const ADD_DONATION = `import { addDonation, HorizonAccountPort } from "spare-sdk";
-
-const result = await addDonation(unsignedTx, {
-  foundation: { account: "G...", domain: "foundation.org" }, // must be listed in its stellar.toml
-  amount: "0.50",            // or: roundUp: true (only when the purchase is USDC)
-  appId: "my-app",           // <= 22 ASCII bytes, memo becomes "spare:my-app"
-  maxAmount: "5",            // your cap per donation
-  accounts: new HorizonAccountPort("https://horizon.stellar.org"),
-});
-
-switch (result.status) {
-  case "offered":      // ask the user "Add US$<result.donation.amount>?", then sign result.transaction
-  case "not-offered":  // sign the original tx; result.reason says why (e.g. "insufficient-balance")
-  case "passthrough":  // signed / fee-bump / multisig / extra signers / Soroban: sign the original tx
-}`;
-
-const DONATE_AFTER = `import { donateAfter } from "spare-sdk";
-
-const follow = await donateAfter(
-  { successful: true, sourceAccount: userAccount, hash },
-  { foundation, amount: "0.50", appId: "my-app", maxAmount: "5",
-    accounts, networkPassphrase: Networks.PUBLIC },
-);
-if (follow.status === "offered") { /* confirm, then sign follow.transaction */ }`;
 
 const TOML = `ACCOUNTS=["G..."]   # the foundation account registered in the Spare registry`;
 
@@ -68,7 +43,7 @@ export const esDocs: DocsContent = {
         items: [
           "La persona siempre decide. No se agrega nada sin un sí explícito. Si dice que no, se firma la transacción original, byte por byte.",
           "Sin custodia. Los fondos van de la persona a la fundación en un pago normal de Stellar.",
-          "Solo USDC de Circle (`GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN`). Los activos parecidos se rechazan.",
+          "Solo USDC de Circle: emisor de mainnet `GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN`, emisor de testnet `GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5`. Los activos parecidos se rechazan.",
           "Solo fundaciones con dominio verificado. “Dominio verificado” significa que la cuenta está listada en el `stellar.toml` de ese sitio, nada más.",
           "Nunca bloquea un pago. Si falla una verificación (sin trustline, saldo bajo, sobre tu tope, fundación sin verificar) no se ofrece donación. Si algo dentro de Spare da error, se firma la transacción original.",
           "Paso directo seguro. Las transacciones parcialmente firmadas, multisig, fee-bump y Soroban nunca se modifican.",
@@ -119,14 +94,14 @@ export const esDocs: DocsContent = {
       { t: "code", code: SDK_INSTALL, label: "Instalar" },
       { t: "p", text: "`@stellar/stellar-sdk` es una peer dependency: instálala junto a `spare-sdk` (una sola copia compartida con tu app)." },
       { t: "h2", id: "add-donation", text: "Transacción clásica: addDonation", toc: "addDonation" },
-      { t: "code", code: ADD_DONATION, label: "addDonation" },
+      { t: "code", code: addDonationSnippet, label: "addDonation" },
       { t: "p", text: "`offered` devuelve una transacción nueva sin firmar (hash nuevo, comisión subida en una operación, memo puesto solo si estaba vacío y ningún destino exige uno). No se agrega nada sin el sí explícito de la persona." },
       { t: "h2", id: "round-up", text: "Redondeo" },
       { t: "p", text: "Solo cuando toda la transacción es una compra en USDC de Circle (pagos, `pathPaymentStrictSend`, ofertas de venta). El SDK informa lo que usó, así que muestra estos valores en vez de recalcular: `donation.purchase` / `purchaseStroops` (la compra en USDC) y `roundedTotal` / `roundedTotalStroops` (compra más donación). Solo vienen definidos en el redondeo." },
       { t: "list", items: ["Ya es entero (por ejemplo 5.00): `round-up-already-whole`.", "`pathPaymentStrictReceive`, operaciones en XLM u otro activo, o operaciones no modeladas en la misma transacción: `round-up-needs-usdc-purchase` (el gasto real no se conoce de antemano, así que Spare nunca redondea `sendMax`)."] },
       { t: "h2", id: "donate-after", text: "Llamada Soroban: donateAfter", toc: "donateAfter" },
       { t: "p", text: "Una transacción Soroban tiene una sola operación, así que la donación es un pago aparte después del éxito. Necesita una segunda firma: avísale a la persona antes de que acepte." },
-      { t: "code", code: DONATE_AFTER, label: "donateAfter" },
+      { t: "code", code: donateAfterSnippet, label: "donateAfter" },
       { t: "p", text: "El seguimiento es un único pago (umbral medio). Si la cuenta de la persona necesita más que su llave maestra para firmarlo, no se ofrece nada (`multisig`)." },
       { t: "h2", id: "results", text: "Resultados y códigos de motivo", toc: "Códigos de motivo" },
       {
@@ -162,6 +137,7 @@ export const esDocs: DocsContent = {
           ["`invalid-foundation`", "La fundación está mal formada."],
           ["`amount-over-cap`", "La donación supera tu `maxAmount`."],
           ["`round-up-needs-usdc-purchase`", "El redondeo necesita una compra en USDC de Circle (ver arriba)."],
+          ["`network-mismatch`", "La transacción se armó para otra red que `network`."],
           ["`round-up-already-whole`", "La compra ya es un monto entero."],
           ["`foundation-not-verified`", "La cuenta de la fundación no está listada en el `stellar.toml` de su sitio."],
           ["`foundation-trustline-missing`", "La fundación no tiene trustline de USDC."],
@@ -266,7 +242,8 @@ export const esDocs: DocsContent = {
           ["`maxAmount`", "sí", "Tu tope por donación, en USDC."],
           ["`accounts`", "sí", "`AccountPort` de spare-sdk (por ejemplo `HorizonAccountPort`)."],
           ["`fetch`", "no", "Fetch propio para consultar `stellar.toml`."],
-          ["`networkPassphrase`", "no", "Se usa para leer el XDR cuando la llamada no lo recibe. Sin ninguno, la transacción se firma sin cambios."],
+          ["`network`", "no", "`\"mainnet\"` (por defecto) o `\"testnet\"`. Elige el emisor de USDC de Circle; una transacción de otra red se firma sin cambios."],
+          ["`networkPassphrase`", "no", "Se usa para leer el XDR cuando la llamada no lo recibe. Por defecto, el passphrase de `network`. Sin ninguno, la tx se firma sin cambios."],
           ["`confirm`", "no", "`(prompt: DonationPrompt) => Promise<boolean>`. Reemplaza el modal integrado."],
           ["`locale` / `theme`", "no", "`\"en\" | \"es\"`; `\"light\" | \"dark\" | \"auto\"` para el modal integrado."],
           ["`wallet`", "no", "Id de wallet (o función). Por defecto `kit.selectedModule.productId`. `LEDGER` muestra la nota “revisa tu Ledger”."],
