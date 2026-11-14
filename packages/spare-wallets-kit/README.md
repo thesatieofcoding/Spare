@@ -59,7 +59,7 @@ if (follow.status === "signed") await submit(follow.signedTxXdr); // submitting 
 | `maxAmount` | yes | Your cap per donation, in USDC. |
 | `accounts` | yes | `AccountPort` from spare-sdk (e.g. `HorizonAccountPort`). |
 | `fetch` | no | Custom fetch for `stellar.toml` lookups. |
-| `network` | no | `"mainnet"` (default) or `"testnet"`. Selects the Circle USDC issuer; a tx from another network is signed unchanged. |
+| `network` | no | `"mainnet"` (default) or `"testnet"`. Selects the Circle USDC issuer; a tx from another network is signed unchanged. When omitted, it is inferred from the effective `networkPassphrase` (the call's, else the option's) if that is the testnet or mainnet passphrase; an unknown passphrase infers nothing. An explicit `network` always wins. |
 | `networkPassphrase` | no | Used to parse XDR when the call does not pass one. Defaults to the passphrase of `network`. With neither, the tx is signed unchanged. |
 | `confirm` | no | `(prompt: DonationPrompt) => Promise<boolean>`. Replaces the built-in modal. |
 | `locale` / `theme` | no | `"en" \| "es"`; `"light" \| "dark" \| "auto"` for the built-in modal. |
