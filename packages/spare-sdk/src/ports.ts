@@ -1,3 +1,4 @@
+import type { Asset } from "@stellar/stellar-sdk";
 import type { Network } from "./network.js";
 
 /** Injectable fetch (same shape as the global one). */
@@ -42,4 +43,22 @@ export interface Foundation {
   account: string;
   /** Bare hostname whose stellar.toml must list `account`. */
   domain: string;
+}
+
+/** Price of a strict-receive path from XLM to an exact amount of Circle USDC. */
+export interface XlmQuote {
+  /** XLM the cheapest path needs right now, stroops (before any slippage margin). */
+  sendAmount: bigint;
+  /** Intermediate assets between XLM and USDC (at most 5; often empty). */
+  path: Asset[];
+}
+
+/**
+ * Quotes XLM -> Circle USDC paths (e.g. Horizon `/paths/strict-receive`). Resolves null when
+ * there is no path. May throw on network errors; Spare then offers nothing in XLM.
+ */
+export interface PathQuotePort {
+  /** Network this port quotes on. When set, Spare refuses to pair it with another network. */
+  readonly network?: Network;
+  quoteXlmForUsdc(usdcStroops: bigint, usdcIssuer: string): Promise<XlmQuote | null>;
 }

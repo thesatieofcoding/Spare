@@ -20,6 +20,11 @@ export interface EligibilityInput {
   fee: bigint;
   /** XLM the same tx already spends (payments, createAccount...), stroops. Default 0. */
   xlmSpend?: bigint;
+  /**
+   * Paying in XLM: prices the donation (XLM sendMax, stroops) or resolves null when there is no
+   * path. Called only after every offline and foundation check passed. Absent = pay in USDC.
+   */
+  priceXlm?: () => Promise<bigint | null>;
 }
 
 /**
@@ -44,6 +49,15 @@ export async function checkEligibility(i: EligibilityInput): Promise<NotOfferedR
   if (!foundation?.usdc) return "foundation-trustline-missing";
   if (!foundation.usdc.authorized) return "foundation-trustline-unauthorized";
   if (foundation.usdc.headroom < i.amount) return "foundation-trustline-full";
+
+  if (i.priceXlm) {
+    // XLM path: no USDC trustline needed. XLM above the minimum reserve (xlmAvailable already
+    // nets reserve and selling liabilities) must cover the purchase, the sendMax and the fee.
+    const sendMax = await i.priceXlm();
+    if (sendMax === null) return "no-path";
+    if (i.user.xlmAvailable < i.fee + (i.xlmSpend ?? 0n) + sendMax) return "insufficient-balance";
+    return null;
+  }
 
   if (!i.user.usdc) return "user-trustline-missing";
   if (!i.user.usdc.authorized) return "user-trustline-unauthorized";

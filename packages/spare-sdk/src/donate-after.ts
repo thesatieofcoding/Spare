@@ -1,13 +1,12 @@
-import {
-  Account, Asset, Memo, Operation, Transaction, TransactionBuilder,
-} from "@stellar/stellar-sdk";
+import { Account, Memo, Transaction, TransactionBuilder } from "@stellar/stellar-sdk";
 import { formatStroops, parseUsdc, toStroops } from "./amount.js";
 import { memoFor } from "./app-id.js";
-import { MAX_TX_FEE, USDC_CODE } from "./constants.js";
+import { MAX_TX_FEE } from "./constants.js";
 import { checkEligibility } from "./eligibility.js";
 import { perOpFee } from "./fee.js";
 import { hasRequiredOptions } from "./options.js";
 import { isNetwork, NETWORKS } from "./network.js";
+import { donationOperation, payInfo, payPlan, priceInXlm, type PricedXlm } from "./pay-with.js";
 import { canSignAlone } from "./signing.js";
 import type { AccountSnapshot } from "./ports.js";
 import type { CommonOptions, DonationInfo, NotOfferedReason } from "./types.js";
@@ -32,7 +31,7 @@ export interface MainTxResult {
 }
 
 export type DonateAfterOptions = CommonOptions & {
-  /** Fixed amount in USDC. Round-up is not available on this path. */
+  /** Fixed amount in USD (the foundation receives this much USDC). Round-up is not available on this path. */
   amount: string;
   /**
    * @deprecated Derived from `network`. If given, it must equal that network's passphrase,
@@ -92,6 +91,8 @@ export async function donateAfter(
   const network = NETWORKS[networkName];
   if (opts.networkPassphrase !== undefined && opts.networkPassphrase !== network.passphrase) return no("network-mismatch");
   if (opts.accounts.network !== undefined && opts.accounts.network !== networkName) return no("network-mismatch");
+  const plan = payPlan(opts, networkName);
+  if (typeof plan === "string") return no(plan);
 
   const amount = parseUsdc(opts.amount);
   if (amount === null) return no("invalid-amount");
@@ -120,6 +121,7 @@ export async function donateAfter(
   // user would need other signers, which this flow cannot collect.
   if (!canSignAlone(user, "medium")) return no("multisig");
 
+  let priced: PricedXlm | null = null;
   const reason = await checkEligibility({
     accounts: opts.accounts,
     ...(opts.fetch && { fetch: opts.fetch }),
@@ -131,6 +133,12 @@ export async function donateAfter(
     user,
     usdcSpend: 0n, // the main tx already settled
     fee: baseFee,
+    ...(plan.payWith === "xlm" && {
+      priceXlm: async () => {
+        priced = await priceInXlm(plan, amount, network.usdcIssuer);
+        return priced?.sendMax ?? null;
+      },
+    }),
   });
   if (reason) return no(reason);
 
@@ -139,13 +147,7 @@ export async function donateAfter(
     networkPassphrase: network.passphrase,
     memo: Memo.text(memoFor(opts.appId)),
   })
-    .addOperation(
-      Operation.payment({
-        destination: opts.foundation.account,
-        asset: new Asset(USDC_CODE, network.usdcIssuer),
-        amount: formatStroops(amount),
-      }),
-    )
+    .addOperation(donationOperation(opts.foundation.account, amount, network.usdcIssuer, priced))
     .setTimeout(opts.timeoutSeconds ?? 300)
     .build();
 
@@ -158,6 +160,7 @@ export async function donateAfter(
       amount: formatStroops(amount),
       amountStroops: amount,
       foundation: opts.foundation.account,
+      ...payInfo(plan.payWith, priced),
       attributed: true,
     },
   };
