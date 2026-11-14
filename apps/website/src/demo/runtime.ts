@@ -107,7 +107,16 @@ export async function createPorts(network: DemoNetwork): Promise<NetworkPorts> {
           return { hash: res.hash };
         } catch (e) {
           const codes = (e as { response?: { data?: { extras?: { result_codes?: unknown } } } }).response?.data?.extras?.result_codes;
-          throw new PortError("submit-failed", codes ? JSON.stringify(codes) : messageOf(e));
+          throw new PortError("submit-failed", codes ? JSON.stringify(codes) : messageOf(e), !codes);
+        }
+      },
+      async lookup(signedXdr) {
+        try {
+          const rec = await horizon.transactions().transaction(Array.from(parse(signedXdr).hash(), (b) => b.toString(16).padStart(2, "0")).join("")).call();
+          return rec.successful ? { hash: rec.hash } : null;
+        } catch (e) {
+          if ((e as { response?: { status?: number } }).response?.status === 404) return null;
+          throw e;
         }
       },
     },
@@ -130,6 +139,10 @@ export async function createPorts(network: DemoNetwork): Promise<NetworkPorts> {
       },
       async getStatus(hash): Promise<TxStatus> {
         return (await server.getTransaction(hash)).status as TxStatus;
+      },
+      async getLedger(hash) {
+        const res = await server.getTransaction(hash);
+        return "ledger" in res ? res.ledger : undefined;
       },
     },
     builder: {

@@ -96,6 +96,23 @@ export function createController(opts: ControllerOptions): DemoController {
     return value;
   }
 
+  /** Asks Horizon whether a submitted tx landed. Polls only when the submit outcome is unknown. */
+  async function findLanded(p: NetworkPorts, signedXdr: string, uncertain: boolean): Promise<{ hash: string } | null> {
+    const lookup = p.horizon.lookup;
+    if (!lookup) return null;
+    const rounds = uncertain ? 5 : 1;
+    for (let i = 0; i < rounds; i++) {
+      try {
+        const found = await lookup.call(p.horizon, signedXdr);
+        if (found) return found;
+      } catch {
+        return null; // cannot tell: report the original failure
+      }
+      if (i + 1 < rounds) await sleep(pollIntervalMs);
+    }
+    return null;
+  }
+
   async function connect(): Promise<void> {
     if (state.status !== "idle") return;
     const network = state.network;
@@ -185,9 +202,19 @@ export function createController(opts: ControllerOptions): DemoController {
 
       // From here the main tx is final: nothing below may turn it into an error.
       const main = { mainHash: sent.hash };
+      // Best effort: with the ledger, the follow-up waits for Horizon to catch up with RPC.
+      let ledger: number | undefined;
+      try {
+        ledger = await rpc.getLedger?.(sent.hash);
+      } catch {
+        ledger = undefined;
+      }
       let follow: Awaited<ReturnType<typeof spare.offerFollowUp>>;
       try {
-        follow = await spare.offerFollowUp({ successful: true, sourceAccount: address, hash: sent.hash }, signOpts);
+        follow = await spare.offerFollowUp({
+          successful: true, sourceAccount: address, hash: sent.hash,
+          ...(ledger !== undefined && { ledger }),
+        }, signOpts);
       } catch (e) {
         if (token === epoch) finish({ ...main, outcome: "follow-up-failed", reason: messageOf(e) });
         return;
@@ -201,12 +228,19 @@ export function createController(opts: ControllerOptions): DemoController {
       }
       dispatch({ type: "advance", to: "submitting-follow-up" });
       try {
-        const donation = await p.horizon.submit(follow.signedTxXdr); // Horizon, never RPC; no retry
+        const donation = await p.horizon.submit(follow.signedTxXdr); // Horizon, never RPC; never resubmitted
         if (token === epoch) {
           finish({ ...main, donationHash: donation.hash, outcome: "donated", donationAmount: follow.donation.amount });
         }
       } catch (e) {
-        if (token === epoch) finish({ ...main, outcome: "follow-up-failed", reason: messageOf(e) });
+        // A timeout or dropped connection does not mean the tx failed: look it up before saying so.
+        const landed = await findLanded(p, follow.signedTxXdr, e instanceof PortError && e.uncertain);
+        if (token !== epoch) return;
+        if (landed) {
+          finish({ ...main, donationHash: landed.hash, outcome: "donated", donationAmount: follow.donation.amount });
+        } else {
+          finish({ ...main, outcome: "follow-up-failed", reason: messageOf(e) });
+        }
       }
     } catch (e) {
       if (!(e instanceof Abort)) {

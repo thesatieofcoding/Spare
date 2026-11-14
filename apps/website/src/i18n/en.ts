@@ -195,6 +195,7 @@ export const en: Messages = {
       "user-trustline-unauthorized": "Your USDC trustline is not authorized.",
       "insufficient-balance": "Your USDC balance does not cover the donation and the fee.",
       "account-lookup-failed": "Your account could not be checked.",
+      "account-not-synced": "Your account is not up to date yet, so no donation was offered.",
       "main-tx-not-successful": "The purchase did not succeed.",
       "unsupported-operation": "This transaction has operations Spare does not touch.",
       multisig: "The account needs more than one signature.",

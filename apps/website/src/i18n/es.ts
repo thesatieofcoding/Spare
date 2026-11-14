@@ -195,6 +195,7 @@ export const es: Messages = {
       "user-trustline-unauthorized": "Tu trustline de USDC no está autorizada.",
       "insufficient-balance": "Tu saldo de USDC no cubre la donación y la comisión.",
       "account-lookup-failed": "No se pudo revisar tu cuenta.",
+      "account-not-synced": "Tu cuenta todavía no está al día, así que no se ofreció la donación.",
       "main-tx-not-successful": "La compra no tuvo éxito.",
       "unsupported-operation": "Esta transacción tiene operaciones que Spare no toca.",
       multisig: "La cuenta necesita más de una firma.",
