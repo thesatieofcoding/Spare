@@ -1,0 +1,27 @@
+{
+  "events": [
+    {
+      "type": "contract",
+      "ledger": 65477361,
+      "ledgerClosedAt": "2026-11-14T16:14:07Z",
+      "contractId": "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
+      "id": "0281223124124344321-0000000002",
+      "operationIndex": 1,
+      "transactionIndex": 234,
+      "txHash": "557f7fd054207f9ab4100a0186685cce7c46e4a7038b073478e528ad7c7296f1",
+      "inSuccessfulContractCall": true,
+      "topic": [
+        "AAAADwAAAAh0cmFuc2Zlcg==",
+        "AAAAEgAAAAAAAAAAlooY9sq/1DRijeCRsxbOqqYtL6HgelNA+VoVSyk0C9E=",
+        "AAAAEgAAAAAAAAAAZjIPsiagBRYbx5uP9gYSoThvPj7zhnH2pfd9+gxyiEQ=",
+        "AAAADgAAAD1VU0RDOkdBNVpTRUpZQjM3SlJDNUFWQ0lBNU1PUDRSSFRNMzM1WDJLR1gzSUhPSkFQUDVSRTM0SzRLWlZOAAAA"
+      ],
+      "value": "AAAAEQAAAAEAAAACAAAADwAAAAZhbW91bnQAAAAAAAoAAAAAAAAAAAAAAAAAD0JAAAAADwAAAAt0b19tdXhlZF9pZAAAAAAOAAAAEHNwYXJlOnNwYXJlLWRlbW8="
+    }
+  ],
+  "cursor": "0281223128418353151-4294967295",
+  "latestLedger": 65483327,
+  "oldestLedger": 65362368,
+  "latestLedgerCloseTime": "1794702677",
+  "oldestLedgerCloseTime": "1794097882"
+}
