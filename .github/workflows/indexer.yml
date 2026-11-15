@@ -1,0 +1,75 @@
+name: indexer
+on:
+  schedule:
+    - cron: "17 */3 * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: index (incremental) or rebuild (replay from Horizon after an RPC gap)
+        type: choice
+        options: [index, rebuild]
+        default: index
+
+# Snapshot is committed to the orphan `data` branch only; main is never written.
+permissions:
+  contents: write
+
+concurrency:
+  group: indexer
+  cancel-in-progress: false
+
+jobs:
+  indexer:
+    # Off until the maintainer sets repository variable SPARE_INDEXER_ENABLED=true.
+    if: vars.SPARE_INDEXER_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: data
+          path: data-branch
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Keep previous snapshot for change detection
+        run: cp data-branch/snapshot.json "$RUNNER_TEMP/prev.json" || true
+      - name: Run indexer
+        env:
+          SPARE_RPC_URL: ${{ secrets.SPARE_RPC_URL }}
+          MODE: ${{ inputs.mode || 'index' }}
+        run: pnpm -C packages/spare-indexer start "$MODE" --network mainnet --out "$GITHUB_WORKSPACE/data-branch/snapshot.json"
+      - name: Commit snapshot to data
+        id: commit
+        working-directory: data-branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add snapshot.json
+          if git diff --cached --quiet; then
+            echo "data_changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed=true
+          if [ -f "$RUNNER_TEMP/prev.json" ] && [ "$(jq -S .data "$RUNNER_TEMP/prev.json")" = "$(jq -S .data snapshot.json)" ]; then
+            changed=false
+          fi
+          echo "data_changed=$changed" >> "$GITHUB_OUTPUT"
+          git commit -m "chore(data): update snapshot"
+          git push origin HEAD:refs/heads/data
+      - name: Trigger website deploy
+        if: steps.commit.outputs.data_changed == 'true'
+        env:
+          VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -n "$VERCEL_DEPLOY_HOOK_URL" ]; then
+            curl --fail --silent --show-error -X POST "$VERCEL_DEPLOY_HOOK_URL" > /dev/null
+          else
+            echo "VERCEL_DEPLOY_HOOK_URL not set; skipping deploy"
+          fi
