@@ -105,7 +105,7 @@ function toAsset(s: unknown): ObservedAsset {
  * RPC adapter (transport injected, so tests replay recorded results). Event rows are decoded with
  * stellar-sdk; the `from` topic is never read, so no payer address can leave this module.
  */
-export function createRpcAdapter(opts: RpcAdapterOptions): Omit<RpcPort, "liveUntil"> {
+export function createRpcAdapter(opts: RpcAdapterOptions): RpcPort {
   const { transport } = opts;
   const net = NETWORKS[opts.network];
   const sacId = new Asset("USDC", net.usdcIssuer).contractId(net.passphrase);
@@ -152,6 +152,19 @@ export function createRpcAdapter(opts: RpcAdapterOptions): Omit<RpcPort, "liveUn
 
   return {
     health,
+
+    async liveUntil(contractId, account) {
+      // Contract `DataKey::Foundation(Address)` serializes as Vec[Symbol("Foundation"), Address].
+      const key = xdr.LedgerKey.contractData(
+        new xdr.LedgerKeyContractData({
+          contract: new Address(contractId).toScAddress(),
+          key: xdr.ScVal.scvVec([xdr.ScVal.scvSymbol("Foundation"), new Address(account).toScVal()]),
+          durability: xdr.ContractDataDurability.persistent,
+        }),
+      );
+      const r = (await transport("getLedgerEntries", { keys: [key.toXDR("base64")] })) as { entries?: Array<{ liveUntilLedgerSeq?: number }> | null };
+      return r.entries?.[0]?.liveUntilLedgerSeq ?? null;
+    },
 
     async *registryEvents(contractIds, from) {
       const filters = chunks(contractIds, MAX).map((ids) => ({ type: "contract", contractIds: ids, topics: [[symbol("spare"), "*", "*"]] }));

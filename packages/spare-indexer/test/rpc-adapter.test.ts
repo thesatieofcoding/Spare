@@ -1,4 +1,4 @@
-import { Account, Address, Asset, Memo as SdkMemo, Networks, Operation, StrKey, TransactionBuilder, nativeToScVal } from "@stellar/stellar-sdk";
+import { Account, Address, Asset, Memo as SdkMemo, Networks, Operation, StrKey, TransactionBuilder, nativeToScVal, xdr } from "@stellar/stellar-sdk";
 import { describe, expect, it } from "vitest";
 import { createHorizonAdapter } from "../src/adapters/horizon.js";
 import { createRpcAdapter, type RpcTransport } from "../src/adapters/rpc.js";
@@ -177,6 +177,32 @@ describe("rpc adapter: registryEvents", () => {
       ["deactivate", 130, A, undefined, undefined],
     ]);
     expect(out[0]!.contractId).toBe(ids[0]);
+  });
+});
+
+describe("rpc adapter: liveUntil", () => {
+  const CID = nthContract(3);
+  const ACCOUNT = nth(5);
+
+  it("asks getLedgerEntries for persistent contract data Vec[Symbol(Foundation), Address] (DataKey::Foundation)", async () => {
+    const r = recorded({ getLedgerEntries: () => rec("rpc-getLedgerEntries-missing.json") });
+    await adapter(r.transport).liveUntil(CID, ACCOUNT);
+    const keys = r.of("getLedgerEntries")[0]!.params.keys as string[];
+    expect(keys).toHaveLength(1);
+    const k = xdr.LedgerKey.fromXDR(keys[0]!, "base64");
+    if (k.type !== "contractData") throw new Error("expected contractData key");
+    expect(Address.fromScAddress(k.contractData.contract).toString()).toBe(CID);
+    expect(k.contractData.durability).toBe(xdr.ContractDataDurability.persistent);
+    expect(k.contractData.key.toXDR("base64")).toBe(xdr.ScVal.scvVec([xdr.ScVal.scvSymbol("Foundation"), new Address(ACCOUNT).toScVal()]).toXDR("base64"));
+  });
+
+  it("returns liveUntilLedgerSeq for a live entry and null when the entry is missing or archived", async () => {
+    const live = recorded({ getLedgerEntries: () => ({ entries: [{ key: "k", xdr: "x", lastModifiedLedgerSeq: 10, liveUntilLedgerSeq: 5_123_456 }], latestLedger: 11 }) });
+    expect(await adapter(live.transport).liveUntil(CID, ACCOUNT)).toBe(5_123_456);
+    const missing = recorded({ getLedgerEntries: () => rec("rpc-getLedgerEntries-missing.json") });
+    expect(await adapter(missing.transport).liveUntil(CID, ACCOUNT)).toBeNull();
+    const none = recorded({ getLedgerEntries: () => ({ latestLedger: 11 }) });
+    expect(await adapter(none.transport).liveUntil(CID, ACCOUNT)).toBeNull();
   });
 });
 
