@@ -12,3 +12,4 @@ export type { RpcPort, HorizonPort, DomainVerifier, ClockPort, SnapshotStore, Cu
 export { parseConfig, EXIT, type IndexerConfig, type SeedAccount, type ConfigResult } from "./config.js";
 export { runIndex, type IndexDeps, type IndexResult } from "./app/index-run.js";
 export { runRebuild, type RebuildDeps } from "./app/rebuild-run.js";
+export { parseSnapshot, toPublicView, type ParseResult, type PublicView, type PublicFoundation, type PublicTx } from "./public.js";
