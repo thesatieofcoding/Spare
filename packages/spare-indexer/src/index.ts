@@ -14,3 +14,4 @@ export { runIndex, type IndexDeps, type IndexResult } from "./app/index-run.js";
 export { runRebuild, type RebuildDeps } from "./app/rebuild-run.js";
 export { parseSnapshot, toPublicView, type ParseResult, type PublicView, type PublicFoundation, type PublicTx } from "./public.js";
 export { createFsStore, type FsOps } from "./adapters/fs-store.js";
+export { createTomlVerifier, createSafeFetch, createSafeLookup, isBlockedAddress } from "./adapters/toml.js";

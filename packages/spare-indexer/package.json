@@ -15,7 +15,8 @@
   },
   "dependencies": {
     "@stellar/stellar-sdk": "^17.4.0",
-    "spare-sdk": "workspace:^"
+    "spare-sdk": "workspace:^",
+    "undici": "^8.12.4"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
