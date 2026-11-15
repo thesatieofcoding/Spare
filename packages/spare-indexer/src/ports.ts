@@ -18,6 +18,8 @@ export interface RpcPort {
 export interface HorizonPort {
   /** Full payment history of an account, paginated to exhaustion by the adapter. */
   payments(account: string, fromLedger?: number): AsyncIterable<TransferObservation>;
+  /** Latest ledger Horizon has ingested (`history_latest_ledger`); rebuild uses it as the RPC resume point. */
+  latestLedger(): Promise<number>;
 }
 
 /** Boolean only: true iff the account is listed in ACCOUNTS of the domain's stellar.toml. */

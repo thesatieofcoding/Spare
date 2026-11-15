@@ -22,6 +22,8 @@ export async function runRebuild(config: IndexerConfig, deps: RebuildDeps): Prom
   const known = new Set((prev?.data.foundations ?? []).map((f) => f.account));
   const state = reduceRegistry([...eventsFromFoundations(prev?.data.foundations ?? []), ...seedEvents(config.seedAccounts, known)]);
 
+  // Payments are covered up to Horizon's latest ledger; the next `index` run resumes right after it.
+  const covered = await deps.horizon.latestLedger();
   const observed = [];
   for (const account of state.keys()) observed.push(...(await collect(deps.horizon.payments(account))));
 
@@ -33,7 +35,7 @@ export async function runRebuild(config: IndexerConfig, deps: RebuildDeps): Prom
     verified: await verifyAll(state, deps.verifier),
     // No RPC here: carry TTL observations forward; the next `index` run refreshes them.
     ttl: new Map(Object.entries(prev?.observations.foundations ?? {}).map(([k, v]) => [k, v.ttl])),
-    cursors: prev?.observations.cursors ?? { rpcLedger: null, registryCursor: null, paymentsCursor: null },
+    cursors: { registryCursor: null, paymentsCursor: null, ...prev?.observations.cursors, rpcLedger: covered },
     now: deps.clock.now(),
   });
   if (!serializeSnapshot(snapshot).ok) return { status: "error", reason: "privacy guard: snapshot contains a non-allowed account address" };

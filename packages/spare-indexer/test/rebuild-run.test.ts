@@ -47,13 +47,26 @@ describe("runRebuild", () => {
     expect(store.current!.data.donations.map((d) => d.ledger)).toEqual([150]);
   });
 
-  it("unverified domain is recorded, not thrown; previous cursors and ttl are kept", async () => {
+  it("sets the rpc cursor to the Horizon latest ledger it covered, so the next index run resumes without a gap", async () => {
+    const store = memStore();
+    const events = [{ contractId: "C1", account: FOUNDATION, kind: "register" as const, ledger: 100, name: "Fund", website: "fund.org" }];
+    await runIndex(config, { rpc: fakeRpc({ events, latest: 777 }), horizon: fakeHorizon(), verifier: verifier(true), clock, store });
+    // time passes beyond RPC retention: oldest 3000 > cursor 777 + 1
+    const stale = await runIndex(config, { rpc: fakeRpc({ events, oldest: 3000, latest: 5100 }), horizon: fakeHorizon(), verifier: verifier(true), clock, store });
+    expect(stale.status).toBe("gap");
+    await runRebuild(config, { horizon: fakeHorizon(history, 2, 5000), verifier: verifier(true), clock, store });
+    expect(store.current!.observations.cursors.rpcLedger).toBe(5000);
+    const next = await runIndex(config, { rpc: fakeRpc({ events, oldest: 3000, latest: 5100 }), horizon: fakeHorizon(), verifier: verifier(true), clock, store });
+    expect(next.status).toBe("ok");
+  });
+
+  it("unverified domain is recorded, not thrown; previous ttl is kept and the cursor follows Horizon", async () => {
     const store = memStore();
     const events = [{ contractId: "C1", account: FOUNDATION, kind: "register" as const, ledger: 100, name: "Fund", website: "fund.org" }];
     await runIndex(config, { rpc: fakeRpc({ events, latest: 777, liveUntil: 9_000_000 }), horizon: fakeHorizon(), verifier: verifier(true), clock, store });
-    await runRebuild(config, { horizon: fakeHorizon(), verifier: verifier("throw"), clock, store });
+    await runRebuild(config, { horizon: fakeHorizon([], 2, 900), verifier: verifier("throw"), clock, store });
     const o = store.current!.observations;
     expect(o.foundations[FOUNDATION]).toMatchObject({ verified: false, ttl: { liveUntilLedger: 9_000_000, nearExpiry: false } });
-    expect(o.cursors.rpcLedger).toBe(777);
+    expect(o.cursors.rpcLedger).toBe(900);
   });
 });

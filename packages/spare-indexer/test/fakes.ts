@@ -43,10 +43,11 @@ export const throwingRpc: RpcPort = {
   liveUntil: () => Promise.reject(new Error("RPC must not be called")),
 };
 
-export function fakeHorizon(payments: TransferObservation[] = [], pageSize = 2): HorizonPort & { calls: string[] } {
+export function fakeHorizon(payments: TransferObservation[] = [], pageSize = 2, latest = 1000): HorizonPort & { calls: string[]; latestLedger(): Promise<number> } {
   const calls: string[] = [];
   return {
     calls,
+    latestLedger: async () => latest,
     // Yields in pages to exercise "follow pagination to exhaustion" consumers.
     async *payments(account) {
       calls.push(account);

@@ -119,6 +119,16 @@ describe("createHorizonAdapter.payments", () => {
     expect(out[2]!.memo).toEqual({ type: "text", bytes: new TextEncoder().encode("spare:shop1") });
   });
 
+  it("latestLedger reads history_latest_ledger from the Horizon root", async () => {
+    const urls: string[] = [];
+    const fetchFn = async (input: string | URL | Request) => {
+      urls.push(String(input));
+      return new Response(JSON.stringify(rec("horizon-root.json")));
+    };
+    expect(await createHorizonAdapter({ baseUrl: `${BASE}/`, fetch: fetchFn }).latestLedger()).toBe(65483308);
+    expect(urls).toEqual([`${BASE}/`]);
+  });
+
   it("throws on non-2xx and refuses to follow next links to another origin", async () => {
     const bad = createHorizonAdapter({ baseUrl: BASE, fetch: async () => new Response("no", { status: 503 }) });
     await expect(all(bad.payments(FOUNDATION_MAINNET))).rejects.toThrow(/503/);

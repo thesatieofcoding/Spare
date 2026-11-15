@@ -65,6 +65,12 @@ export function createHorizonAdapter(opts: HorizonAdapterOptions): HorizonPort {
   };
 
   return {
+    async latestLedger() {
+      const root = (await getJson(`${base.origin}/`)) as { history_latest_ledger?: number };
+      if (typeof root.history_latest_ledger !== "number") throw new Error("Horizon root has no history_latest_ledger");
+      return root.history_latest_ledger;
+    },
+
     async *payments(account, fromLedger) {
       let url: string | null = `${base.origin}/accounts/${account}/payments?join=transactions&order=asc&limit=${PAGE_LIMIT}`;
       while (url !== null) {
