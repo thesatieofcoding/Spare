@@ -9,6 +9,7 @@
     "node": ">=20"
   },
   "scripts": {
+    "start": "tsx src/bin.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "tsc --noEmit -p tsconfig.json"

@@ -1,0 +1,12 @@
+{
+  "testnet": {
+    "registryContracts": ["CDCYBSVIKFGGFZLU5O37UV33ECRLTEOWLAQ7XKJEGBNGYCM62UN3I2RF"],
+    "startLedger": 0,
+    "seedAccounts": []
+  },
+  "mainnet": {
+    "registryContracts": [],
+    "startLedger": 0,
+    "seedAccounts": []
+  }
+}
