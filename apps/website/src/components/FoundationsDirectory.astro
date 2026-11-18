@@ -1,0 +1,87 @@
+---
+import FoundationCard from "./FoundationCard.astro";
+import { getMessages, localizePath, type Lang } from "../i18n/utils";
+import type { PublicFoundation } from "spare-indexer/public";
+
+interface Props {
+  lang: Lang;
+  /** Already filtered to verified AND active by toPublicView. */
+  foundations: PublicFoundation[];
+}
+const { lang, foundations } = Astro.props;
+const t = getMessages(lang);
+---
+
+<section class="directory container">
+  <header class="intro">
+    <p class="eyebrow">{t.pages.foundations}</p>
+    <h1 class="h2">{t.foundations.title}</h1>
+    <p class="lead">{t.foundations.lead}</p>
+    <p class="note">{t.verifiedBadge.explainer}</p>
+  </header>
+  {
+    foundations.length === 0 ? (
+      <p class="empty">{t.foundations.empty}</p>
+    ) : (
+      <ul class="grid">
+        {foundations.map((f) => (
+          <li>
+            <FoundationCard
+              name={f.name}
+              website={f.website}
+              href={localizePath(lang, `dashboard/${f.account}`)}
+              badgeLabel={t.verifiedBadge.label}
+              viewLabel={t.foundations.viewDashboard}
+            />
+          </li>
+        ))}
+      </ul>
+    )
+  }
+</section>
+
+<style>
+  .directory {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+    padding-block: var(--space-12) var(--space-20);
+  }
+  .intro {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    max-width: 720px;
+  }
+  .lead,
+  .empty {
+    font-size: 16px;
+    line-height: 24px;
+    color: var(--text-secondary);
+  }
+  .note {
+    font-size: 14px;
+    line-height: 20px;
+    color: var(--text-secondary);
+  }
+  .grid {
+    display: grid;
+    gap: var(--space-6);
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  @media (min-width: 768px) {
+    .directory {
+      padding-block: var(--space-16) var(--space-24);
+    }
+    .grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (min-width: 1100px) {
+    .grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+</style>

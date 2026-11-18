@@ -1,0 +1,18 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import FoundationsDirectory from "../../components/FoundationsDirectory.astro";
+import { LANGS, langParam, paramToLang, getMessages } from "../../i18n/utils";
+import { loadSnapshot } from "../../lib/snapshot-source";
+
+export function getStaticPaths() {
+  return LANGS.map((lang) => ({ params: { lang: langParam(lang) } }));
+}
+
+const lang = paramToLang(Astro.params.lang);
+const t = getMessages(lang);
+const { view } = await loadSnapshot();
+---
+
+<BaseLayout lang={lang} title={`${t.pages.foundations} — Spare`}>
+  <FoundationsDirectory lang={lang} foundations={view.foundations} />
+</BaseLayout>

@@ -13,7 +13,7 @@ const files = (dir: string): string[] =>
 describe("demo route", () => {
   it("has its own page and is no longer a placeholder", () => {
     expect(existsSync(join(root, "src/pages/[...lang]/demo.astro"))).toBe(true);
-    expect(read("src/pages/[...lang]/[page].astro")).not.toMatch(/"demo"/);
+    expect(existsSync(join(root, "src/pages/[...lang]/[page].astro"))).toBe(false);
   });
 });
 
