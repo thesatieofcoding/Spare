@@ -1,0 +1,32 @@
+---
+import { getMessages, type Lang } from "../i18n/utils";
+import { formatUtc } from "../lib/dashboard-model";
+
+interface Props {
+  lang: Lang;
+  generatedAt: string;
+  sample: boolean;
+}
+const { lang, generatedAt, sample } = Astro.props;
+const t = getMessages(lang).dashboard;
+---
+
+{sample && <p class="banner" role="note">{t.sampleData}</p>}
+<p class="generated">{t.generatedAt.replace("{time}", formatUtc(generatedAt))}</p>
+
+<style>
+  .banner {
+    padding: var(--space-3) var(--space-4);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius-8);
+    background: var(--bg-subtle);
+    color: var(--text-primary);
+    font-size: 14px;
+    line-height: 20px;
+  }
+  .generated {
+    color: var(--text-secondary);
+    font-size: 14px;
+    line-height: 20px;
+  }
+</style>

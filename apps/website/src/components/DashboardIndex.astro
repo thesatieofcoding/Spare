@@ -1,0 +1,97 @@
+---
+import DashboardMeta from "./DashboardMeta.astro";
+import DashboardStat from "./DashboardStat.astro";
+import FoundationCard from "./FoundationCard.astro";
+import { getMessages, localizePath, type Lang } from "../i18n/utils";
+import { sumUsdc } from "../lib/dashboard-model";
+import { formatUsdc } from "../lib/format-usdc";
+import type { PublicFoundation } from "spare-indexer/public";
+
+interface Props {
+  lang: Lang;
+  foundations: PublicFoundation[];
+  generatedAt: string;
+  sample: boolean;
+}
+const { lang, foundations, generatedAt, sample } = Astro.props;
+const m = getMessages(lang);
+const t = m.dashboard;
+const total = formatUsdc(sumUsdc(foundations.map((f) => f.totalViaSpare)));
+const count = foundations.reduce((n, f) => n + f.count, 0);
+---
+
+<section class="page container">
+  <header class="intro">
+    <p class="eyebrow">{m.pages.dashboard}</p>
+    <h1 class="h2">{t.title}</h1>
+    <p class="lead">{t.lead}</p>
+    <DashboardMeta lang={lang} generatedAt={generatedAt} sample={sample} />
+  </header>
+  {
+    foundations.length === 0 ? (
+      <p class="lead">{t.indexEmpty}</p>
+    ) : (
+      <>
+        <div class="stats">
+          <DashboardStat label={t.totalViaSpare} value={total} note={t.usdc} />
+          <DashboardStat label={t.donations} value={String(count)} />
+        </div>
+        <ul class="grid">
+          {foundations.map((f) => (
+            <li>
+              <FoundationCard
+                name={f.name}
+                website={f.website}
+                href={localizePath(lang, `dashboard/${f.account}`)}
+                badgeLabel={m.verifiedBadge.label}
+                viewLabel={m.foundations.viewDashboard}
+              />
+            </li>
+          ))}
+        </ul>
+      </>
+    )
+  }
+</section>
+
+<style>
+  .page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+    padding-block: var(--space-12) var(--space-20);
+  }
+  .intro {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    max-width: 720px;
+  }
+  .lead {
+    font-size: 16px;
+    line-height: 24px;
+    color: var(--text-secondary);
+  }
+  .stats,
+  .grid {
+    display: grid;
+    gap: var(--space-4);
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  @media (min-width: 768px) {
+    .page {
+      padding-block: var(--space-16) var(--space-24);
+    }
+    .stats,
+    .grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (min-width: 1100px) {
+    .grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+</style>

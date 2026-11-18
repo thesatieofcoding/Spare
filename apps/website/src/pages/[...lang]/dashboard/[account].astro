@@ -1,0 +1,25 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import FoundationDashboard from "../../../components/FoundationDashboard.astro";
+import { LANGS, langParam, paramToLang, getMessages } from "../../../i18n/utils";
+import { loadSnapshot } from "../../../lib/snapshot-source";
+
+// One snapshot load per build: everything the page needs travels through props.
+export async function getStaticPaths() {
+  const { mode, snapshot, view } = await loadSnapshot();
+  return LANGS.flatMap((lang) =>
+    view.foundations.map((foundation) => ({
+      params: { lang: langParam(lang), account: foundation.account },
+      props: { foundation, network: snapshot.network, generatedAt: view.generatedAt, sample: mode === "fixture" },
+    })),
+  );
+}
+
+const lang = paramToLang(Astro.params.lang);
+const t = getMessages(lang);
+const { foundation, network, generatedAt, sample } = Astro.props;
+---
+
+<BaseLayout lang={lang} title={`${foundation.name} — ${t.pages.dashboard} — Spare`}>
+  <FoundationDashboard lang={lang} foundation={foundation} network={network} generatedAt={generatedAt} sample={sample} />
+</BaseLayout>

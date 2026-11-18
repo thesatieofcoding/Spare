@@ -1,0 +1,170 @@
+---
+import Chip from "./Chip.astro";
+import DashboardMeta from "./DashboardMeta.astro";
+import DashboardStat from "./DashboardStat.astro";
+import TextLink from "./TextLink.astro";
+import TransactionRow from "./TransactionRow.astro";
+import VerifiedBadge from "./VerifiedBadge.astro";
+import { explorerTxUrl } from "../demo/view";
+import { getMessages, localizePath, type Lang } from "../i18n/utils";
+import { formatUsdc } from "../lib/format-usdc";
+import { formatUtc } from "../lib/dashboard-model";
+import type { PublicFoundation } from "spare-indexer/public";
+
+interface Props {
+  lang: Lang;
+  foundation: PublicFoundation;
+  network: "mainnet" | "testnet";
+  generatedAt: string;
+  sample: boolean;
+}
+const { lang, foundation: f, network, generatedAt, sample } = Astro.props;
+const m = getMessages(lang);
+const t = m.dashboard;
+---
+
+<section class="page container">
+  <header class="intro">
+    <p class="eyebrow">{t.title}</p>
+    <h1 class="h2">{f.name}</h1>
+    <p class="site">{f.website}</p>
+    <VerifiedBadge label={m.verifiedBadge.label} />
+    <DashboardMeta lang={lang} generatedAt={generatedAt} sample={sample} />
+  </header>
+
+  <div class="stats">
+    <DashboardStat label={t.totalViaSpare} value={formatUsdc(f.totalViaSpare)} note={t.usdc} />
+    <DashboardStat label={t.donations} value={String(f.count)} />
+  </div>
+
+  <section class="block" aria-labelledby="by-app">
+    <h2 class="h4" id="by-app">{t.byApp}</h2>
+    {
+      f.apps.length === 0 ? (
+        <p class="muted">{t.noApps}</p>
+      ) : (
+        <ul class="apps">
+          {f.apps.map((a) => (
+            <li class="app">
+              <Chip>{a.appId}</Chip>
+              <span class="app__amount">{formatUsdc(a.total)} {t.usdc}</span>
+              <span class="muted">{a.count} {t.count.toLowerCase()}</span>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </section>
+
+  <section class="block unattributed" data-unattributed aria-labelledby="unattributed">
+    <h2 class="h4" id="unattributed">{t.unattributed}</h2>
+    <p class="muted">{t.unattributedNote}</p>
+    <p class="app__amount">{formatUsdc(f.unattributed.total)} {t.usdc} <span class="muted">· {f.unattributed.count}</span></p>
+  </section>
+
+  <section class="block" aria-labelledby="txs">
+    <h2 class="h4" id="txs">{t.transactions}</h2>
+    {
+      f.txs.length === 0 ? (
+        <p class="muted">{t.noTransactions}</p>
+      ) : (
+        <div class="txs">
+          {f.txs.map((tx) => (
+            <TransactionRow
+              amount={`${formatUsdc(tx.amount)} ${t.usdc}`}
+              app={tx.appId ?? t.unattributed}
+              time={formatUtc(tx.closedAt)}
+              href={explorerTxUrl(network, tx.txHash)}
+              linkLabel={t.viewTx}
+            />
+          ))}
+        </div>
+      )
+    }
+  </section>
+
+  <TextLink href={localizePath(lang, "dashboard")}>{t.back}</TextLink>
+</section>
+
+<style>
+  .page {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-8);
+    padding-block: var(--space-12) var(--space-20);
+  }
+  .intro {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+    max-width: 720px;
+  }
+  .site {
+    color: var(--text-secondary);
+    font-size: 14px;
+    line-height: 20px;
+    overflow-wrap: anywhere;
+  }
+  .stats {
+    display: grid;
+    gap: var(--space-4);
+    width: 100%;
+  }
+  .block {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    width: 100%;
+  }
+  .h4 {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    font-size: 22px;
+    line-height: 28px;
+  }
+  .muted {
+    color: var(--text-secondary);
+    font-size: 14px;
+    line-height: 20px;
+  }
+  .apps {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .app {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  .app__amount {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    font-size: 16px;
+    line-height: 24px;
+  }
+  .unattributed {
+    padding: var(--space-6);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-16);
+    background: var(--bg-page);
+  }
+  .txs {
+    width: 100%;
+    border-top: 1px solid var(--border);
+  }
+  @media (min-width: 768px) {
+    .page {
+      padding-block: var(--space-16) var(--space-24);
+    }
+    .stats {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+</style>

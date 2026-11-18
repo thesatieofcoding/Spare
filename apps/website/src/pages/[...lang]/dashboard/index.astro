@@ -1,0 +1,18 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import DashboardIndex from "../../../components/DashboardIndex.astro";
+import { LANGS, langParam, paramToLang, getMessages } from "../../../i18n/utils";
+import { loadSnapshot } from "../../../lib/snapshot-source";
+
+export function getStaticPaths() {
+  return LANGS.map((lang) => ({ params: { lang: langParam(lang) } }));
+}
+
+const lang = paramToLang(Astro.params.lang);
+const t = getMessages(lang);
+const { mode, view } = await loadSnapshot();
+---
+
+<BaseLayout lang={lang} title={`${t.pages.dashboard} — Spare`}>
+  <DashboardIndex lang={lang} foundations={view.foundations} generatedAt={view.generatedAt} sample={mode === "fixture"} />
+</BaseLayout>
