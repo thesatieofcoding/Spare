@@ -59,6 +59,8 @@ export interface DemoCopy {
   networkLabel: string;
   testnet: string;
   mainnet: string;
+  /** Label shown whenever the demo targets mainnet. */
+  mainnetWarning: string;
   /** Shown when the selected network lacks a foundation or merchant account. */
   notConfigured: string;
   rpcUnavailable: string;
@@ -129,6 +131,32 @@ export interface Messages {
   };
   faq: { eyebrow: string; title: string; seeAll: string };
   comingSoon: { title: string; body: string; back: string };
+  foundations: { title: string; lead: string; empty: string; website: string; viewDashboard: string };
+  /** "Domain verified" means exactly: the account is listed in ACCOUNTS of the website's stellar.toml. */
+  verifiedBadge: { label: string; explainer: string };
+  dashboard: {
+    title: string;
+    lead: string;
+    indexEmpty: string;
+    totalViaSpare: string;
+    donations: string;
+    byApp: string;
+    app: string;
+    amount: string;
+    count: string;
+    unattributed: string;
+    unattributedNote: string;
+    noApps: string;
+    noTransactions: string;
+    transactions: string;
+    time: string;
+    viewTx: string;
+    /** Contains {time}. */
+    generatedAt: string;
+    sampleData: string;
+    back: string;
+    usdc: string;
+  };
   demo: DemoCopy;
   pages: { docs: string; foundations: string; dashboard: string; demo: string };
 }
