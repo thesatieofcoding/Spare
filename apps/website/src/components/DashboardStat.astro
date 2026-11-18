@@ -1,0 +1,43 @@
+---
+interface Props {
+  label: string;
+  value: string;
+  note?: string;
+  class?: string;
+}
+const { label, value, note, class: className } = Astro.props;
+---
+
+<div class:list={["stat", className]}>
+  <p class="stat__label">{label}</p>
+  <p class="stat__value">{value}</p>
+  {note && <p class="stat__note">{note}</p>}
+</div>
+
+<style>
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-6);
+    border-radius: var(--radius-16);
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  .stat__label,
+  .stat__note {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 20px;
+    color: var(--text-secondary);
+  }
+  .stat__value {
+    margin: 0;
+    font-family: var(--font-serif);
+    font-weight: 500;
+    font-size: 32px;
+    line-height: 40px;
+    color: var(--text-primary);
+  }
+</style>

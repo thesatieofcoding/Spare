@@ -1,0 +1,55 @@
+---
+/** One donation. Amount, app, time and an explorer link only: never a donor address. */
+interface Props {
+  amount: string;
+  app: string;
+  time: string;
+  href: string;
+  linkLabel: string;
+}
+const { amount, app, time, href, linkLabel } = Astro.props;
+---
+
+<div class="tx">
+  <span class="tx__amount">{amount}</span>
+  <span class="tx__app">{app}</span>
+  <time class="tx__time">{time}</time>
+  <a class="tx__link" href={href} target="_blank" rel="noopener noreferrer">{linkLabel}</a>
+</div>
+
+<style>
+  .tx {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 20px;
+    color: var(--text-primary);
+  }
+  .tx__amount {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    font-size: 16px;
+    line-height: 24px;
+  }
+  .tx__time {
+    color: var(--text-secondary);
+  }
+  .tx__link {
+    font-weight: 500;
+    color: var(--text-accent);
+    text-underline-offset: 4px;
+  }
+  .tx__link:hover {
+    text-decoration: underline;
+  }
+  @media (max-width: 640px) {
+    .tx {
+      grid-template-columns: 1fr auto;
+    }
+  }
+</style>

@@ -1,0 +1,59 @@
+---
+import VerifiedBadge from "./VerifiedBadge.astro";
+
+interface Props {
+  name: string;
+  website: string;
+  href: string;
+  badgeLabel: string;
+  viewLabel: string;
+}
+const { name, website, href, badgeLabel, viewLabel } = Astro.props;
+---
+
+<article class="card">
+  <h3 class="card__name">{name}</h3>
+  <p class="card__site">{website}</p>
+  <VerifiedBadge label={badgeLabel} />
+  <a class="card__link" href={href}>{viewLabel}</a>
+</article>
+
+<style>
+  .card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-6);
+    border-radius: var(--radius-16);
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  .card__name {
+    margin: 0;
+    font-family: var(--font-serif);
+    font-weight: 500;
+    font-size: 22px;
+    line-height: 28px;
+    color: var(--text-primary);
+  }
+  .card__site {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 20px;
+    color: var(--text-secondary);
+    overflow-wrap: anywhere;
+  }
+  .card__link {
+    font-family: var(--font-sans);
+    font-weight: 500;
+    font-size: 14px;
+    line-height: 20px;
+    color: var(--text-accent);
+    text-underline-offset: 4px;
+  }
+  .card__link:hover {
+    text-decoration: underline;
+  }
+</style>

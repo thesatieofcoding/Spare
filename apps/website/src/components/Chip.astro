@@ -1,0 +1,23 @@
+---
+interface Props {
+  class?: string;
+}
+const { class: className } = Astro.props;
+---
+
+<span class:list={["chip", className]}><slot /></span>
+
+<style>
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius-full);
+    background: var(--bg-subtle);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-weight: 500;
+    font-size: 14px;
+    line-height: 20px;
+  }
+</style>
