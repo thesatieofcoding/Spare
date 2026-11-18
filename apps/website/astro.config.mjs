@@ -12,6 +12,8 @@ export default defineConfig({
     resolve: {
       alias: {
         "spare-sdk": src("../../packages/spare-sdk/src/index.ts"),
+        // Subpath imports ("spare-indexer/public") resolve to the indexer source; no prior build.
+        "spare-indexer": src("../../packages/spare-indexer/src"),
         "spare-wallets-kit": src("../../packages/spare-wallets-kit/src/index.ts"),
       },
     },

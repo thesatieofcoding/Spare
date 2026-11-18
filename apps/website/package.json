@@ -17,6 +17,7 @@
     "@stellar/stellar-sdk": "^17.4.0",
     "astro": "7.4.8",
     "buffer": "6.0.3",
+    "spare-indexer": "workspace:^",
     "spare-sdk": "workspace:^",
     "spare-wallets-kit": "workspace:^"
   },

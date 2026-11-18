@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 1,
+  "network": "mainnet",
+  "registryContracts": [
+    "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+  ],
+  "data": {
+    "foundations": [
+      {
+        "account": "GBSAMPLEFOUNDATIONAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA2",
+        "name": "Sample Foundation",
+        "website": "sample-foundation.example.org",
+        "active": true,
+        "backfilled": false,
+        "registrations": [
+          {
+            "contractId": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "intervals": [
+              {
+                "from": 100,
+                "to": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "account": "GBSAMPLEUNVERIFIEDAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "name": "Unverified Sample",
+        "website": "unverified.example.org",
+        "active": true,
+        "backfilled": false,
+        "registrations": [
+          {
+            "contractId": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "intervals": [
+              {
+                "from": 100,
+                "to": null
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "donations": [
+      {
+        "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:0",
+        "foundation": "GBSAMPLEFOUNDATIONAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA2",
+        "amount": "1.0000000",
+        "appId": "app-a",
+        "ledger": 200,
+        "closedAt": "2026-01-01T00:00:00Z",
+        "txHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      {
+        "id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:0",
+        "foundation": "GBSAMPLEFOUNDATIONAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA2",
+        "amount": "0.5000000",
+        "appId": "app-a",
+        "ledger": 210,
+        "closedAt": "2026-01-02T00:00:00Z",
+        "txHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc:0",
+        "foundation": "GBSAMPLEFOUNDATIONAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA2",
+        "amount": "2.0000000",
+        "appId": null,
+        "ledger": 220,
+        "closedAt": "2026-01-03T00:00:00Z",
+        "txHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      },
+      {
+        "id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd:0",
+        "foundation": "GBSAMPLEUNVERIFIEDAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "amount": "9.0000000",
+        "appId": "app-z",
+        "ledger": 230,
+        "closedAt": "2026-01-04T00:00:00Z",
+        "txHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      }
+    ]
+  },
+  "observations": {
+    "generatedAt": "2026-01-05T00:00:00Z",
+    "cursors": {
+      "rpcLedger": 230,
+      "registryCursor": null,
+      "paymentsCursor": null
+    },
+    "foundations": {
+      "GBSAMPLEFOUNDATIONAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA2": {
+        "verified": true,
+        "checkedAt": "2026-01-05T00:00:00Z",
+        "ttl": {
+          "liveUntilLedger": 3000000,
+          "nearExpiry": false
+        }
+      },
+      "GBSAMPLEUNVERIFIEDAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA": {
+        "verified": false,
+        "checkedAt": "2026-01-05T00:00:00Z",
+        "ttl": {
+          "liveUntilLedger": 3000000,
+          "nearExpiry": false
+        }
+      }
+    }
+  }
+}

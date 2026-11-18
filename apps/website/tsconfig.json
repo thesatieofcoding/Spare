@@ -16,6 +16,9 @@
       ],
       "spare-wallets-kit": [
         "../../packages/spare-wallets-kit/src/index.ts"
+      ],
+      "spare-indexer/*": [
+        "../../packages/spare-indexer/src/*"
       ]
     }
   }
