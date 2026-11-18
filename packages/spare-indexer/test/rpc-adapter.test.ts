@@ -180,6 +180,19 @@ describe("rpc adapter: registryEvents", () => {
   });
 });
 
+describe("rpc adapter: registryEvents contract accounts", () => {
+  it("ignores events whose account is a contract (C...) address", async () => {
+    const cid = nthContract(0);
+    const evs = [
+      registryEvent({ id: "1-0", ledger: 100, contractId: cid, kind: "register", account: nthContract(9) }),
+      registryEvent({ id: "2-0", ledger: 101, contractId: cid, kind: "register", account: nth(1) }),
+    ];
+    const r = recorded({ getEvents: () => ({ events: evs, cursor: cursorAt(200), latestLedger: 200, oldestLedger: 1 }) });
+    const out: RegistryEvent[] = await all(adapter(r.transport).registryEvents([cid], { ledger: 50 }));
+    expect(out.map((e) => e.account)).toEqual([nth(1)]);
+  });
+});
+
 describe("rpc adapter: liveUntil", () => {
   const CID = nthContract(3);
   const ACCOUNT = nth(5);

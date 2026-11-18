@@ -1,3 +1,5 @@
+import { StrKey } from "@stellar/stellar-sdk";
+
 /**
  * Registry reducer + eligibility (D8). Pure: events in, state out.
  * An interval is the half-open ledger range [from, to) during which a
@@ -39,6 +41,7 @@ export function reduceRegistry(events: readonly RegistryEvent[]): RegistryState 
   const ordered = events.map((e, i) => ({ e, i })).sort((a, b) => a.e.ledger - b.e.ledger || a.i - b.i);
   const state: RegistryState = new Map();
   for (const { e } of ordered) {
+    if (!StrKey.isValidEd25519PublicKey(e.account)) continue; // contract (C...) accounts are never indexed
     let f = state.get(e.account);
     if (e.kind === "register") {
       if (!f) {

@@ -1,4 +1,4 @@
-import { Address, Asset, scValToNative, xdr } from "@stellar/stellar-sdk";
+import { Address, Asset, StrKey, scValToNative, xdr } from "@stellar/stellar-sdk";
 import { NETWORKS, type FetchLike, type Network } from "spare-sdk";
 import type { RegistryEvent } from "../domain/registry.js";
 import type { Memo, ObservedAsset, TransferObservation } from "../domain/types.js";
@@ -172,6 +172,8 @@ export function createRpcAdapter(opts: RpcAdapterOptions): RpcPort {
         const kind = decode(e.topic[1] ?? "");
         if ((kind !== "register" && kind !== "update" && kind !== "deactivate") || e.topic[2] === undefined) continue;
         const account = Address.fromScVal(xdr.ScVal.fromXDR(e.topic[2], "base64")).toString();
+        // Contracts can register their own C... address; Horizon rejects those, so only G keys are indexed.
+        if (!StrKey.isValidEd25519PublicKey(account)) continue;
         const [name, website] = decode(e.value) as [string, string];
         yield { contractId: e.contractId, account, kind, ledger: e.ledger, ...(kind === "deactivate" ? {} : { name, website }) } satisfies RegistryEvent;
       }

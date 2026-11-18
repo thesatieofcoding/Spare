@@ -43,7 +43,7 @@ export const throwingRpc: RpcPort = {
   liveUntil: () => Promise.reject(new Error("RPC must not be called")),
 };
 
-export function fakeHorizon(payments: TransferObservation[] = [], pageSize = 2, latest = 1000): HorizonPort & { calls: string[]; latestLedger(): Promise<number> } {
+export function fakeHorizon(payments: TransferObservation[] = [], pageSize = 2, latest = 1000, failFor: readonly string[] = []): HorizonPort & { calls: string[]; latestLedger(): Promise<number> } {
   const calls: string[] = [];
   return {
     calls,
@@ -51,6 +51,7 @@ export function fakeHorizon(payments: TransferObservation[] = [], pageSize = 2, 
     // Yields in pages to exercise "follow pagination to exhaustion" consumers.
     async *payments(account) {
       calls.push(account);
+      if (failFor.includes(account)) throw new Error(`Horizon 400 for ${account}`);
       const mine = payments.filter((p) => p.to === account);
       for (let i = 0; i < mine.length; i += pageSize) yield* mine.slice(i, i + pageSize);
     },

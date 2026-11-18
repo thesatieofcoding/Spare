@@ -128,4 +128,20 @@ describe("runIndex", () => {
     await runIndex(config, gone);
     expect(gone.store.current!.observations.foundations[FOUNDATION]!.ttl.nearExpiry).toBe(true);
   });
+
+  it("a Horizon error for one account does not abort the run; it stays un-backfilled and is retried next run", async () => {
+    const store = memStore();
+    const rpc = () => fakeRpc({ events: [reg(100), reg(101, "register", OTHER_FOUNDATION)], ignoreCursor: true });
+    const pays = [pay(10, "p1", { to: OTHER_FOUNDATION })];
+    const r = await runIndex(config, deps({ store, rpc: rpc(), horizon: fakeHorizon(pays, 2, 1000, [FOUNDATION]) }));
+    expect(r.status).toBe("ok");
+    const byAcc = new Map(store.current!.data.foundations.map((f) => [f.account, f.backfilled]));
+    expect(byAcc.get(FOUNDATION)).toBe(false);
+    expect(byAcc.get(OTHER_FOUNDATION)).toBe(true);
+    expect(store.current!.data.donations).toHaveLength(1);
+    const retry = fakeHorizon(pays);
+    await runIndex(config, deps({ store, rpc: rpc(), horizon: retry }));
+    expect(retry.calls).toEqual([FOUNDATION]);
+    expect(store.current!.data.foundations.every((f) => f.backfilled)).toBe(true);
+  });
 });

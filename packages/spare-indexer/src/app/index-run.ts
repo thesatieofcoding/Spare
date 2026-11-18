@@ -41,8 +41,12 @@ export async function runIndex(config: IndexerConfig, deps: IndexDeps): Promise<
   const observed = [];
   for (const account of state.keys()) {
     if (backfilled.has(account)) continue;
-    observed.push(...(await collect(deps.horizon.payments(account))));
-    backfilled.add(account);
+    try {
+      observed.push(...(await collect(deps.horizon.payments(account))));
+      backfilled.add(account);
+    } catch {
+      // One bad account must not stall the run; it stays un-backfilled and is retried next run.
+    }
   }
   observed.push(...(await collect(deps.rpc.usdcTransfers([...state.keys()], cursor))));
 

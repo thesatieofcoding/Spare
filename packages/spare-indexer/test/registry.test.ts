@@ -1,3 +1,4 @@
+import { StrKey } from "@stellar/stellar-sdk";
 import { describe, expect, it } from "vitest";
 import { isEligible, reduceRegistry, type RegistryEvent } from "../src/domain/registry.js";
 import { FOUNDATION, OTHER_FOUNDATION } from "./fixtures/observations.js";
@@ -59,5 +60,14 @@ describe("reduceRegistry", () => {
     const s = reduceRegistry([ev({ kind: "deactivate", ledger: 90 })]);
     expect(isEligible(s, OTHER_FOUNDATION, 1)).toBe(false);
     expect(s.size).toBe(0);
+  });
+});
+
+describe("reduceRegistry: non-G accounts", () => {
+  it("drops events whose account is not an ed25519 G key", () => {
+    const c = StrKey.encodeContract(Buffer.alloc(32, 9));
+    const g = StrKey.encodeEd25519PublicKey(Buffer.alloc(32, 1));
+    const ev = (account: string): RegistryEvent => ({ contractId: "C1", account, kind: "register", ledger: 5, name: "n", website: "w.org" });
+    expect([...reduceRegistry([ev(c), ev(g)]).keys()]).toEqual([g]);
   });
 });
