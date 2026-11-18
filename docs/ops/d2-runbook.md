@@ -30,7 +30,7 @@ Confirm the new version supports the network: `stellar network ls` should list `
 
 ## 2. Bump the crate version and tag the release (Maintainer)
 
-The WASM file is named from the crate version, not the tag, so bump `version` in `contracts/registry/Cargo.toml` first (currently `0.1.0`; next is `0.1.1`) and merge it to `main`.
+The WASM file is named from the crate version, not the tag, so bump `version` in `contracts/registry/Cargo.toml` first and merge it to `main`. Done for 0.1.1 (commit 2d96f6a, tag pushed 2026-11-18).
 
 ```
 git tag registry-v0.1.1
