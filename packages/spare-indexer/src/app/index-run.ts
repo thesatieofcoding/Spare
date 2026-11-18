@@ -37,10 +37,12 @@ export async function runIndex(config: IndexerConfig, deps: IndexDeps): Promise<
   ];
   const state = reduceRegistry(events);
 
+  // Verify first: only domain-verified accounts are backfilled (a registered busy account must not stall the run).
+  const verified = await verifyAll(state, deps.verifier);
   const backfilled = new Set((prev?.data.foundations ?? []).filter((f) => f.backfilled).map((f) => f.account));
   const observed = [];
   for (const account of state.keys()) {
-    if (backfilled.has(account)) continue;
+    if (backfilled.has(account) || verified.get(account) !== true) continue;
     try {
       observed.push(...(await collect(deps.horizon.payments(account))));
       backfilled.add(account);
@@ -51,7 +53,6 @@ export async function runIndex(config: IndexerConfig, deps: IndexDeps): Promise<
   observed.push(...(await collect(deps.rpc.usdcTransfers([...state.keys()], cursor))));
 
   const records = mergeRecords([...(prev?.data.donations ?? []), ...toRecords(observed, state, config.network)]);
-  const verified = await verifyAll(state, deps.verifier);
 
   const ttl = new Map<string, FoundationObservation["ttl"]>();
   for (const f of state.values()) {

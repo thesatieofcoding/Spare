@@ -144,4 +144,13 @@ describe("runIndex", () => {
     expect(retry.calls).toEqual([FOUNDATION]);
     expect(store.current!.data.foundations.every((f) => f.backfilled)).toBe(true);
   });
+
+  it("backfills only domain-verified accounts (unverified never hit Horizon)", async () => {
+    const horizon = fakeHorizon([pay(10, "p1")]);
+    const d = { ...deps({ rpc: fakeRpc({ events: [reg(100)] }), horizon }), verifier: verifier(false) };
+    const r = await runIndex(config, d);
+    expect(r.status).toBe("ok");
+    expect(horizon.calls).toEqual([]);
+    expect(d.store.current!.data.foundations[0]!.backfilled).toBe(false);
+  });
 });
