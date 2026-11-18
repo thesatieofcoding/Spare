@@ -1,8 +1,8 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { verifyFoundation } from "spare-sdk";
 import { assertFoundationsInToml, tomlAccounts } from "../src/demo/foundation-guard";
-import { DEMO_DOMAIN, TESTNET_FOUNDATION_ACCOUNT, createDemoConfig } from "../src/demo/config";
+import { DEMO_DOMAIN, MAINNET_DEMO_FOUNDATION_ACCOUNT, TESTNET_FOUNDATION_ACCOUNT, createDemoConfig } from "../src/demo/config";
 
 const TOML_URL = new URL("../public/.well-known/stellar.toml", import.meta.url);
 const toml = readFileSync(TOML_URL, "utf8");
@@ -84,5 +84,26 @@ describe("vercel.json headers for stellar.toml", () => {
     expect(rule?.source.endsWith("/")).toBe(false);
     expect(rule?.source).not.toMatch(/[(*:]/);
     expect(vercel.trailingSlash).toBe(true);
+  });
+});
+
+describe("served stellar.toml lists every demo foundation account (DEMO-02 S1)", () => {
+  const distToml = new URL("../dist/.well-known/stellar.toml", import.meta.url);
+  const configured = () => {
+    const cfg = createDemoConfig({ PUBLIC_SPARE_DEMO_MAINNET: "on", PUBLIC_SPARE_MAINNET_FOUNDATION: MAINNET_DEMO_FOUNDATION_ACCOUNT });
+    return [cfg.testnet.foundation!.account, cfg.mainnet.foundation!.account];
+  };
+  it("pins the mainnet demo foundation account (full id)", () => {
+    expect(MAINNET_DEMO_FOUNDATION_ACCOUNT).toMatch(/^GBTDED5S[A-Z2-7]{48}$/);
+    expect(tomlAccounts(toml)).toContain(MAINNET_DEMO_FOUNDATION_ACCOUNT);
+  });
+  it("source toml lists testnet and mainnet accounts, and the guard accepts them", () => {
+    expect(tomlAccounts(toml)).toEqual(expect.arrayContaining(configured()));
+    const cfg = createDemoConfig({ PUBLIC_SPARE_DEMO_MAINNET: "on", PUBLIC_SPARE_MAINNET_FOUNDATION: MAINNET_DEMO_FOUNDATION_ACCOUNT });
+    expect(() => assertFoundationsInToml(cfg, toml)).not.toThrow();
+  });
+  it.skipIf(!existsSync(distToml))("the built dist toml lists them too and passes verifyFoundation", async () => {
+    const built = readFileSync(distToml, "utf8");
+    expect(tomlAccounts(built)).toEqual(expect.arrayContaining(configured()));
   });
 });

@@ -31,6 +31,13 @@ export const DEMO_FOUNDATION_NAME = "Spare demo foundation";
 /** User-controlled testnet account. Manual prerequisite: authorized USDC trustline. */
 export const TESTNET_FOUNDATION_ACCOUNT = "GCAEBBLSVFM2RLNBYMEZLFWHCXFHOGVJAXQK2K3WVHS2UGVDVWJOXGQJ";
 
+/**
+ * Mainnet demo foundation (public account, demo donations return to the builder). Not a default:
+ * mainnet stays off until PUBLIC_SPARE_DEMO_MAINNET=on and PUBLIC_SPARE_MAINNET_FOUNDATION is set
+ * (to this value). Kept here so the served stellar.toml and its tests have one pinned reference.
+ */
+export const MAINNET_DEMO_FOUNDATION_ACCOUNT = "GBTDED5SE2QAKFQ3Y6NY75QGCKQTQ3Z6H3ZYM4PWUX3X36QMOKEEJFPQ";
+
 export interface DemoEnv {
   /** Mainnet switch: only the exact value "on" enables it (default off). */
   PUBLIC_SPARE_DEMO_MAINNET?: string | undefined;
