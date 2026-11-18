@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { assertNoDonorAddresses } from "spare-indexer/domain/privacy";
-import { describe, expect, it } from "vitest";
-import { loadSnapshot, resolveSource, SNAPSHOT_URL, SnapshotSourceError } from "../src/lib/snapshot-source";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { loadSnapshot, resetSnapshotCache, resolveSource, SNAPSHOT_URL, SnapshotSourceError } from "../src/lib/snapshot-source";
 import fixture from "../src/data/snapshot.fixture.json";
 
 const noNetwork = () => {
@@ -83,5 +83,53 @@ describe("loadSnapshot: remote mode", () => {
   });
   it("never falls back to the fixture when remote is forced", async () => {
     await expect(loadSnapshot({ env: { VERCEL_ENV: "production", SPARE_SNAPSHOT_SOURCE: "fixture" }, fetch: reply("nope", 500) })).rejects.toThrow();
+  });
+});
+
+describe("loadSnapshot: build-wide cache, timeout and token", () => {
+  const env = { VERCEL_ENV: "production" };
+  const body = JSON.stringify(fixture);
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+    resetSnapshotCache();
+  });
+
+  it("default calls share one remote fetch per build", async () => {
+    vi.stubEnv("SPARE_SNAPSHOT_SOURCE", "remote");
+    const f = vi.fn(async () => new Response(body));
+    vi.stubGlobal("fetch", f);
+    const [a, b] = [await loadSnapshot(), await loadSnapshot()];
+    expect(f).toHaveBeenCalledTimes(1);
+    expect(a).toBe(b);
+  });
+  it("injected fetch/env bypasses the cache", async () => {
+    const f = vi.fn(async () => new Response(body));
+    await loadSnapshot({ env, fetch: f });
+    await loadSnapshot({ env, fetch: f });
+    expect(f).toHaveBeenCalledTimes(2);
+  });
+  it("a failed default load is not cached", async () => {
+    vi.stubEnv("SPARE_SNAPSHOT_SOURCE", "remote");
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("x", { status: 500 })));
+    await expect(loadSnapshot()).rejects.toThrow(/500/);
+    const ok = vi.fn(async () => new Response(body));
+    vi.stubGlobal("fetch", ok);
+    await expect(loadSnapshot()).resolves.toMatchObject({ mode: "remote" });
+  });
+  it("sends Authorization only when GITHUB_TOKEN is set", async () => {
+    const seen: (string | null)[] = [];
+    const fetch = async (_i: RequestInfo | URL, init?: RequestInit) => {
+      seen.push(new Headers(init?.headers).get("authorization"));
+      return new Response(body);
+    };
+    await loadSnapshot({ env, fetch });
+    await loadSnapshot({ env: { ...env, GITHUB_TOKEN: "tok123" }, fetch });
+    expect(seen).toEqual([null, "Bearer tok123"]);
+  });
+  it("passes a timeout abort signal", async () => {
+    let signal: AbortSignal | null | undefined;
+    await loadSnapshot({ env, fetch: async (_i, init) => { signal = init?.signal; return new Response(body); } });
+    expect(signal).toBeInstanceOf(AbortSignal);
   });
 });

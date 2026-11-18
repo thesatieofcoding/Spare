@@ -12,6 +12,8 @@ export type SnapshotMode = "remote" | "fixture";
 export interface SourceEnv {
   SPARE_SNAPSHOT_SOURCE?: string | undefined;
   VERCEL_ENV?: string | undefined;
+  /** Optional: lifts the unauthenticated GitHub API rate limit. Never logged. */
+  GITHUB_TOKEN?: string | undefined;
 }
 
 export interface LoadedSnapshot {
@@ -33,10 +35,14 @@ export function resolveSource(env: SourceEnv): SnapshotMode {
   return env.SPARE_SNAPSHOT_SOURCE === "remote" ? "remote" : "fixture";
 }
 
-async function fetchRemote(fetchFn: FetchLike): Promise<unknown> {
+export const FETCH_TIMEOUT_MS = 15_000;
+
+async function fetchRemote(fetchFn: FetchLike, token: string | undefined): Promise<unknown> {
   let res: Response;
+  const headers: Record<string, string> = { Accept: "application/vnd.github.raw" };
+  if (token) headers.Authorization = `Bearer ${token}`;
   try {
-    res = await fetchFn(SNAPSHOT_URL, { headers: { Accept: "application/vnd.github.raw" } });
+    res = await fetchFn(SNAPSHOT_URL, { headers, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
   } catch (e) {
     throw new SnapshotSourceError(`snapshot unreachable (${SNAPSHOT_URL}): ${e instanceof Error ? e.message : String(e)}`);
   }
@@ -49,11 +55,32 @@ export interface LoadOptions {
   fetch?: FetchLike;
 }
 
-export async function loadSnapshot(opts: LoadOptions = {}): Promise<LoadedSnapshot> {
+let cached: Promise<LoadedSnapshot> | undefined;
+
+/** Test hook: forget the build-wide cached load. */
+export function resetSnapshotCache(): void {
+  cached = undefined;
+}
+
+/**
+ * One production build renders several pages; with default options they all share one load, so
+ * the GitHub API is hit once and every page sees the same snapshot. Injected env/fetch (tests)
+ * bypass the cache. A failed load is not cached.
+ */
+export function loadSnapshot(opts: LoadOptions = {}): Promise<LoadedSnapshot> {
+  if (opts.env !== undefined || opts.fetch !== undefined) return load(opts);
+  cached ??= load(opts).catch((e: unknown) => {
+    cached = undefined;
+    throw e;
+  });
+  return cached;
+}
+
+async function load(opts: LoadOptions): Promise<LoadedSnapshot> {
   // process.env, not import.meta.env: Vite only exposes PUBLIC_-prefixed vars there, and VERCEL_ENV is not.
   const env = opts.env ?? process.env;
   const mode = resolveSource(env);
-  const raw = mode === "remote" ? await fetchRemote(opts.fetch ?? fetch) : fixture;
+  const raw = mode === "remote" ? await fetchRemote(opts.fetch ?? fetch, env.GITHUB_TOKEN) : fixture;
   const parsed = parseSnapshot(raw);
   if (!parsed.ok) throw new SnapshotSourceError(`invalid snapshot (${mode}): ${parsed.error}`);
   return { mode, snapshot: parsed.snapshot, view: toPublicView(parsed.snapshot) };
