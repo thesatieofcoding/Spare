@@ -154,7 +154,7 @@ If the build fails on a GitHub rate limit, set `GITHUB_TOKEN` (read-only) in the
 
 - Vercel: add the domain `demo.donatespare.xyz` to the website project (alias).
 - DNS: create a `CNAME` for `demo` pointing to the target Vercel shows for the domain.
-- Vercel environment: set `PUBLIC_SPARE_DEMO_MAINNET=on` for Production and redeploy. Mainnet stays off by default and is only active when the variable is on and a foundation account is configured; the UI labels it "Mainnet: real USDC".
+- Vercel environment: `PUBLIC_SPARE_DEMO_MAINNET=on` for Production must be set BEFORE this code reaches `main` (done 2026-11-18), or the live mainnet demo turns off on the next deploy. Mainnet stays off by default and is only active when the variable is on and a foundation account is configured; the UI labels it "Mainnet: real USDC".
 - Check `https://demo.donatespare.xyz/` serves the demo and `https://demo.donatespare.xyz/.well-known/stellar.toml` lists `<FOUNDATION_ACCOUNT>`.
 
 ## 11. Update the evidence map (Maintainer, PR to main)
@@ -168,7 +168,7 @@ Fill the TODO rows of "Deliverable 2 evidence" in `README.md`: mainnet registry 
 | Indexer exit **2** (`RPC history gap`) | The last cursor fell outside RPC retention (~7 days). | Run the workflow with `mode=rebuild` (Horizon replay; never RPC). Then the cron resumes. |
 | Indexer exit **3** | Config or usage error: empty `registryContracts`, missing `SPARE_RPC_URL`, bad flags. | Fix `indexer.config.json` or the secret; nothing was written. |
 | Indexer exit **1** | Runtime error (RPC or Horizon unavailable, snapshot failed the privacy guard). | Re-run; the previous snapshot stays unchanged (writes are atomic). |
-| `::warning::` near expiry | A registry entry is close to TTL expiry. | The foundation signs `update` (or `register` if archived) with the same name and website to extend the TTL. |
+| `::warning::` near expiry | A registry entry is close to TTL expiry. | The foundation signs `update` with the same name and website to extend the TTL (an archived entry is restored automatically by that call). `register` is only for reactivating a deactivated entry. |
 | Wrong contract deployed | No admin, no upgrade. | Deploy a new one (step 4), point the config at the new id, add the old id only if its history must stay. |
 | Bad snapshot on `data` | Dashboard shows wrong data. | Revert the last `data` commit, or run `mode=rebuild`; the website picks it up on the next build. |
 | Need to stop publishing | | `gh variable set SPARE_INDEXER_ENABLED --body false --repo thesatieofcoding/Spare`. |

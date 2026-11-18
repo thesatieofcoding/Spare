@@ -7,6 +7,28 @@
   "trailingSlash": true,
   "redirects": [
     {
+      "source": "/",
+      "destination": "/demo/",
+      "has": [
+        {
+          "type": "host",
+          "value": "demo.donatespare.xyz"
+        }
+      ],
+      "permanent": false
+    },
+    {
+      "source": "/es/",
+      "destination": "/es/demo/",
+      "has": [
+        {
+          "type": "host",
+          "value": "demo.donatespare.xyz"
+        }
+      ],
+      "permanent": false
+    },
+    {
       "source": "/en",
       "destination": "/",
       "permanent": true
@@ -35,28 +57,6 @@
       "source": "/es/docs/quickstart/",
       "destination": "/es/docs/quick-start/",
       "permanent": true
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/",
-      "destination": "/demo/",
-      "has": [
-        {
-          "type": "host",
-          "value": "demo.donatespare.xyz"
-        }
-      ]
-    },
-    {
-      "source": "/es/",
-      "destination": "/es/demo/",
-      "has": [
-        {
-          "type": "host",
-          "value": "demo.donatespare.xyz"
-        }
-      ]
     }
   ],
   "headers": [

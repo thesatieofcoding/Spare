@@ -42,9 +42,9 @@ describe("legacy /en/ URLs", () => {
     expect(map("/docs/quick-start/")).toBeNull();
     expect(map("/docs/quickstarts/")).toBeNull();
   });
-  it("vercel.json does not redirect the root", () => {
+  it("vercel.json does not redirect the root of the main site", () => {
     const { redirects } = vercel();
-    expect(redirects.some((r: { source: string }) => r.source === "/")).toBe(false);
+    expect(redirects.some((r: { source: string; has?: unknown[] }) => r.source === "/" && !r.has)).toBe(false);
   });
   it("vercel.json keeps the stellar.toml CORS header", () => {
     const toml = vercel().headers.find((h: { source: string }) => h.source === "/.well-known/stellar.toml");

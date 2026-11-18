@@ -363,7 +363,7 @@ export const esDocs: DocsContent = {
         ],
       },
       { t: "h2", id: "ttl", text: "TTL" },
-      { t: "p", text: "Las entradas viven en almacenamiento persistente. `register` y `update` extienden el TTL: la extensión llega al máximo de la red (`max_ttl`, unos 180 días en mainnet hoy) y solo ocurre cuando el TTL restante es menor que ese máximo menos 30 días (`30 * 17_280` ledgers), así que llamadas cercanas no lo reescriben. Las entradas sin tocar durante todo el TTL se archivan, no se borran; el indexador marca las que están cerca de expirar para que la fundación llame a `update` y las renueve (al menos cada ~150 días). `get` e `is_active` no extienden. Las entradas desactivadas no se extienden mientras están inactivas y pueden expirar del estado del ledger; reactivar una entrada expirada es un `register` nuevo." },
+      { t: "p", text: "Las entradas viven en almacenamiento persistente. `register` y `update` extienden el TTL: la extensión llega al máximo de la red (`max_ttl`, unos 180 días en mainnet hoy) y solo ocurre cuando el TTL restante es menor que ese máximo menos 30 días (`30 * 17_280` ledgers), así que llamadas cercanas no lo reescriben. Las entradas sin tocar durante todo el TTL se archivan, no se borran; el indexador marca las que están cerca de expirar para que la fundación llame a `update` y las renueve (al menos cada ~150 días). `get` e `is_active` no extienden. Las entradas desactivadas no se extienden mientras están inactivas y pueden expirar del estado del ledger; reactivar una entrada desactivada (archivada o no) es un `register`, que la restaura y la reactiva." },
     ],
   },
   "indexer-dashboard": {

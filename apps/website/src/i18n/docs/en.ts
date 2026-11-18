@@ -363,7 +363,7 @@ export const enDocs: DocsContent = {
         ],
       },
       { t: "h2", id: "ttl", text: "TTL" },
-      { t: "p", text: "Entries live in persistent storage. `register` and `update` extend the TTL: the extension goes to the network maximum (`max_ttl`, about 180 days on mainnet today), and it only happens when the remaining TTL is below that maximum minus 30 days (`30 * 17_280` ledgers), so calls close together do not rewrite it. Entries not touched for the whole TTL are archived, not deleted; the indexer flags entries close to expiry so the foundation can call `update` to renew (at least every ~150 days). `get` and `is_active` do not extend. Deactivated entries are not extended while inactive and may expire from ledger state; reactivating an expired entry is a fresh `register`." },
+      { t: "p", text: "Entries live in persistent storage. `register` and `update` extend the TTL: the extension goes to the network maximum (`max_ttl`, about 180 days on mainnet today), and it only happens when the remaining TTL is below that maximum minus 30 days (`30 * 17_280` ledgers), so calls close together do not rewrite it. Entries not touched for the whole TTL are archived, not deleted; the indexer flags entries close to expiry so the foundation can call `update` to renew (at least every ~150 days). `get` and `is_active` do not extend. Deactivated entries are not extended while inactive and may expire from ledger state; reactivating a deactivated entry (archived or not) is `register`, which restores and reactivates it." },
     ],
   },
   "indexer-dashboard": {
