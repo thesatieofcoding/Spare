@@ -61,11 +61,28 @@ describe("indexer.yml", () => {
   });
 
   test("every git push targets the data branch, and nothing references pushing to main", () => {
-    const pushes = lines().filter((l) => /\bgit\s+push\b/.test(l));
+    const pushes = lines().filter((l) => /\bgit\b.*\bpush\b/.test(l));
     assert.ok(pushes.length >= 1, "expected a git push");
-    for (const l of pushes) assert.match(l.trim(), /^git push origin HEAD:refs\/heads\/data$/, l);
+    for (const l of pushes) assert.match(l.trim(), /^git -c http\.extraheader="[^"]*" push origin HEAD:refs\/heads\/data$/, l);
     assert.doesNotMatch(text(), /refs\/heads\/main|origin\s+main|HEAD:main|git\s+push\b.*(--force|\s-f\b)/);
     assert.match(text(), /ref:\s*data\s*\n\s*path:\s*data-branch/);
+  });
+
+  const steps = () => text().split(/^      - /m).slice(1);
+
+  test("every checkout sets persist-credentials: false", () => {
+    const checkouts = steps().filter((st) => /uses:\s*actions\/checkout@/.test(st));
+    assert.equal(checkouts.length, 2);
+    for (const st of checkouts) assert.match(st, /persist-credentials:\s*false\b/, st);
+  });
+
+  test("the GitHub token is exposed only to the push step", () => {
+    const withToken = steps().filter((st) => /secrets\.GITHUB_TOKEN|GH_TOKEN/.test(st));
+    assert.equal(withToken.length, 1);
+    assert.match(withToken[0], /^name: Push snapshot to data/);
+    assert.match(withToken[0], /GH_TOKEN:\s*\$\{\{\s*secrets\.GITHUB_TOKEN\s*\}\}/);
+    assert.match(withToken[0], /git -c http\.extraheader=.* push origin HEAD:refs\/heads\/data/);
+    assert.doesNotMatch(text(), /persist-credentials:\s*true/);
   });
 
   test("no expression is interpolated into a run: script (secrets and inputs go through env)", () => {
