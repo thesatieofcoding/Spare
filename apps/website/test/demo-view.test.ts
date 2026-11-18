@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { en } from "../src/i18n/en";
 import { es } from "../src/i18n/es";
@@ -33,6 +35,20 @@ describe("formatUsdDisplay", () => {
 describe("truncate", () => {
   it("keeps the ends", () => expect(truncate(ADDR)).toBe("GCAE…XGQJ"));
   it("leaves short strings", () => expect(truncate("abc")).toBe("abc"));
+});
+
+describe("buildView: mainnet warning (DEMO-03)", () => {
+  it("shows the localized label only on mainnet", () => {
+    expect(buildView(initialState("mainnet"), ctx()).mainnetWarning).toBe("Mainnet: real USDC");
+    expect(buildView(initialState("testnet"), ctx()).mainnetWarning).toBeNull();
+    expect(buildView(initialState("mainnet"), ctx({ copy: es.demo })).mainnetWarning).toBe(es.demo.mainnetWarning);
+  });
+  it("the demo page and wiring render the label element", () => {
+    const page = readFileSync(join(import.meta.dirname, "../src/pages/[...lang]/demo.astro"), "utf8");
+    const main = readFileSync(join(import.meta.dirname, "../src/demo/main.ts"), "utf8");
+    expect(page).toContain("data-mainnet-warning");
+    expect(main).toContain("[data-mainnet-warning]");
+  });
 });
 
 describe("buildView", () => {

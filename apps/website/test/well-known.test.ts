@@ -59,10 +59,10 @@ describe("build-time foundation guard", () => {
   it("passes for the real toml with the default config and with a toml-listed mainnet foundation", () => {
     expect(() => assertFoundationsInToml(createDemoConfig({}), toml)).not.toThrow();
     const listed = tomlAccounts(toml)[0]!;
-    expect(() => assertFoundationsInToml(createDemoConfig({ PUBLIC_SPARE_MAINNET_FOUNDATION: listed }), toml)).not.toThrow();
+    expect(() => assertFoundationsInToml(createDemoConfig({ PUBLIC_SPARE_DEMO_MAINNET: "on", PUBLIC_SPARE_MAINNET_FOUNDATION: listed }), toml)).not.toThrow();
   });
   it("throws when PUBLIC_SPARE_MAINNET_FOUNDATION is set but missing from ACCOUNTS", () => {
-    const cfg = createDemoConfig({ PUBLIC_SPARE_MAINNET_FOUNDATION: OTHER });
+    const cfg = createDemoConfig({ PUBLIC_SPARE_DEMO_MAINNET: "on", PUBLIC_SPARE_MAINNET_FOUNDATION: OTHER });
     expect(() => assertFoundationsInToml(cfg, toml)).toThrow(/mainnet foundation .* not in .*ACCOUNTS/);
   });
   it("the demo page runs the guard at build", () => {

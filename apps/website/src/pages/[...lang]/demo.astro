@@ -44,6 +44,7 @@ const purchaseAssets = ["xlm", "usdc"] as const;
       }
     </fieldset>
 
+    <p class="warning" data-mainnet-warning role="status" hidden></p>
     <p class="note" data-not-configured hidden></p>
 
     <div class="card">
@@ -127,6 +128,16 @@ const purchaseAssets = ["xlm", "usdc"] as const;
   .lead,
   .note {
     color: var(--text-secondary);
+  }
+  .warning {
+    align-self: flex-start;
+    padding: var(--space-2) var(--space-4);
+    border: 1px solid var(--error);
+    border-radius: var(--radius-8);
+    color: var(--error);
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 500;
   }
   .badge {
     align-self: flex-start;

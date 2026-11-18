@@ -32,6 +32,8 @@ export const DEMO_FOUNDATION_NAME = "Spare demo foundation";
 export const TESTNET_FOUNDATION_ACCOUNT = "GCAEBBLSVFM2RLNBYMEZLFWHCXFHOGVJAXQK2K3WVHS2UGVDVWJOXGQJ";
 
 export interface DemoEnv {
+  /** Mainnet switch: only the exact value "on" enables it (default off). */
+  PUBLIC_SPARE_DEMO_MAINNET?: string | undefined;
   PUBLIC_SPARE_MAINNET_FOUNDATION?: string | undefined;
   PUBLIC_SPARE_TESTNET_MERCHANT?: string | undefined;
   PUBLIC_SPARE_MAINNET_MERCHANT?: string | undefined;
@@ -50,7 +52,9 @@ function foundation(acct: string | null): DemoFoundation | null {
 
 export function createDemoConfig(env: DemoEnv): DemoConfig {
   const testnetFoundation = foundation(TESTNET_FOUNDATION_ACCOUNT);
-  const mainnetFoundation = foundation(account(env.PUBLIC_SPARE_MAINNET_FOUNDATION));
+  // Mainnet needs the explicit switch AND a configured account; otherwise the demo stays testnet-only.
+  const mainnetOn = env.PUBLIC_SPARE_DEMO_MAINNET === "on";
+  const mainnetFoundation = mainnetOn ? foundation(account(env.PUBLIC_SPARE_MAINNET_FOUNDATION)) : null;
   return {
     testnet: { foundation: testnetFoundation, merchant: account(env.PUBLIC_SPARE_TESTNET_MERCHANT), enabled: testnetFoundation !== null },
     mainnet: { foundation: mainnetFoundation, merchant: account(env.PUBLIC_SPARE_MAINNET_MERCHANT), enabled: mainnetFoundation !== null },

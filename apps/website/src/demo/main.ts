@@ -49,6 +49,7 @@ if (root && copy) {
       r.checked = r.value === v.purchaseAsset;
       r.disabled = !v.canSwitchPurchase;
     });
+    show("[data-mainnet-warning]", v.mainnetWarning !== null, v.mainnetWarning ?? "");
     show("[data-not-configured]", v.notConfigured !== null, v.notConfigured ?? "");
     show("[data-connected]", v.connected !== null, v.connected ?? "");
     show("[data-soroban-note]", v.sorobanNote !== null, v.sorobanNote ?? "");

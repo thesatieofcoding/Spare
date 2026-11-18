@@ -28,6 +28,8 @@ export interface View {
   purchaseAsset: PurchaseAsset;
   /** The purchase asset can change only when no flow is running. */
   canSwitchPurchase: boolean;
+  /** "Mainnet: real USDC" label, shown only while the demo targets mainnet. */
+  mainnetWarning: string | null;
   notConfigured: string | null;
   connected: string | null;
   sorobanNote: string | null;
@@ -107,6 +109,7 @@ export function buildView(state: DemoState, ctx: ViewContext): View {
     purchase: fill(copy.purchase, { amount: ctx.purchaseAmount, asset: ctx.purchaseAsset.toUpperCase() }),
     purchaseAsset: ctx.purchaseAsset,
     canSwitchPurchase: !phase,
+    mainnetWarning: network === "mainnet" ? copy.mainnetWarning : null,
     notConfigured: ctx.availability.enabled ? null : copy.notConfigured,
     connected: address === undefined ? null : fill(copy.connectedAs, { address: truncate(address) }),
     sorobanNote: ready && rpcOff ? copy.rpcUnavailable : null,
