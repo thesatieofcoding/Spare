@@ -61,7 +61,7 @@ export const esDocs: DocsContent = {
           ["`spare-sdk`", "Biblioteca TypeScript central: agrupación en transacciones clásicas, seguimiento Soroban, revisiones de elegibilidad, verificación de `stellar.toml`.", "Listo"],
           ["`spare-wallets-kit`", "Envoltorio de Stellar Wallets Kit con un modal de confirmación accesible (EN/ES, claro/oscuro).", "Listo"],
           ["Contrato de registro", "Registro de fundaciones en Soroban. Sin admin, sin función de actualización, sin fondos.", "Listo, sin desplegar"],
-          ["Indexador y tablero", "Eventos del registro y pagos USDC etiquetados, mostrados por fundación.", "Planificado"],
+          ["Indexador y tablero", "Eventos del registro y pagos USDC etiquetados, mostrados por fundación.", "Listo"],
         ],
       },
       { t: "h2", id: "out-of-scope", text: "Fuera de alcance" },
@@ -363,7 +363,7 @@ export const esDocs: DocsContent = {
         ],
       },
       { t: "h2", id: "ttl", text: "TTL" },
-      { t: "p", text: "Las entradas viven en almacenamiento persistente. `register` y `update` extienden el TTL: el umbral es de unos 30 días (`30 * 17_280` ledgers) y la extensión llega a unos 60 días. Las entradas sin tocar por unos 60 días expiran; el indexador marca las que están cerca de expirar para que la fundación llame a `update` y las renueve. `get` e `is_active` no extienden. Las entradas desactivadas no se extienden mientras están inactivas y pueden expirar del estado del ledger; reactivar una entrada expirada es un `register` nuevo." },
+      { t: "p", text: "Las entradas viven en almacenamiento persistente. `register` y `update` extienden el TTL: la extensión llega al máximo de la red (`max_ttl`, unos 180 días en mainnet hoy) y solo ocurre cuando el TTL restante es menor que ese máximo menos 30 días (`30 * 17_280` ledgers), así que llamadas cercanas no lo reescriben. Las entradas sin tocar durante todo el TTL se archivan, no se borran; el indexador marca las que están cerca de expirar para que la fundación llame a `update` y las renueve (al menos cada ~150 días). `get` e `is_active` no extienden. Las entradas desactivadas no se extienden mientras están inactivas y pueden expirar del estado del ledger; reactivar una entrada expirada es un `register` nuevo." },
     ],
   },
   "indexer-dashboard": {
@@ -371,11 +371,10 @@ export const esDocs: DocsContent = {
     metaTitle: "Indexer y tablero — Documentación de Spare",
     lead: "El registro público de lo que las fundaciones reciben a través de Spare.",
     blocks: [
-      { t: "planned", title: "Planificado", body: "El indexador y el tablero aún no están construidos. Esta página describe lo que harán y cambiará a medida que se publiquen." },
       { t: "h2", id: "indexer", text: "Indexador" },
-      { t: "p", text: "Ingiere eventos del registro y pagos USDC etiquetados, y se puede reconstruir desde Horizon. Las donaciones se atribuyen a una app mediante el memo `spare:<appId>`; una donación que no se pudo etiquetar (`donation.attributed === false`) no se puede atribuir a una app." },
+      { t: "p", text: "Un GitHub Action programado (cada 3 horas) ingiere eventos del registro y pagos USDC a las fundaciones registradas, y sube un `snapshot.json` determinístico a la rama `data`. Si alguna vez se pierde la ventana de historial del RPC (unos 7 días), una reconstrucción repite todo el historial desde Horizon, nunca desde el RPC. Las donaciones se atribuyen a una app solo por el memo `spare:<appId>`; un pago sin la etiqueta se muestra como sin atribuir, aparte de los totales por app." },
       { t: "h2", id: "dashboard", text: "Tablero" },
-      { t: "p", text: "Páginas públicas por fundación con totales, apps y enlaces a transacciones. Agrega por app y por fundación y nunca lista direcciones de donantes." },
+      { t: "p", text: "El sitio lee `snapshot.json` de la rama `data` al compilar y genera páginas estáticas: un directorio de fundaciones y un tablero con una página por fundación, con el total recibido a través de Spare, la cantidad de donaciones, totales por app, el monto sin atribuir aparte y enlaces a transacciones. Solo aparecen las fundaciones con dominio verificado (listadas en `ACCOUNTS` de su `stellar.toml`) y activas en el registro. Agrega por app y por fundación y nunca lista direcciones de donantes." },
     ],
   },
   "stellar-toml": {

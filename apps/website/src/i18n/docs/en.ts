@@ -61,7 +61,7 @@ export const enDocs: DocsContent = {
           ["`spare-sdk`", "Core TypeScript library: classic bundling, Soroban follow-up, eligibility checks, `stellar.toml` verification.", "Built"],
           ["`spare-wallets-kit`", "Stellar Wallets Kit wrapper with an accessible confirmation modal (EN/ES, light/dark).", "Built"],
           ["Registry contract", "Soroban foundation registry. No admin, no upgrade function, no funds.", "Built, not deployed"],
-          ["Indexer and dashboard", "Registry events and tagged USDC payments, shown per foundation.", "Planned"],
+          ["Indexer and dashboard", "Registry events and tagged USDC payments, shown per foundation.", "Built"],
         ],
       },
       { t: "h2", id: "out-of-scope", text: "Out of scope" },
@@ -363,7 +363,7 @@ export const enDocs: DocsContent = {
         ],
       },
       { t: "h2", id: "ttl", text: "TTL" },
-      { t: "p", text: "Entries live in persistent storage. `register` and `update` extend the TTL: the threshold is about 30 days (`30 * 17_280` ledgers) and the extension goes to about 60 days. Entries not touched for about 60 days expire; the indexer flags entries close to expiry so the foundation can call `update` to renew. `get` and `is_active` do not extend. Deactivated entries are not extended while inactive and may expire from ledger state; reactivating an expired entry is a fresh `register`." },
+      { t: "p", text: "Entries live in persistent storage. `register` and `update` extend the TTL: the extension goes to the network maximum (`max_ttl`, about 180 days on mainnet today), and it only happens when the remaining TTL is below that maximum minus 30 days (`30 * 17_280` ledgers), so calls close together do not rewrite it. Entries not touched for the whole TTL are archived, not deleted; the indexer flags entries close to expiry so the foundation can call `update` to renew (at least every ~150 days). `get` and `is_active` do not extend. Deactivated entries are not extended while inactive and may expire from ledger state; reactivating an expired entry is a fresh `register`." },
     ],
   },
   "indexer-dashboard": {
@@ -371,11 +371,10 @@ export const enDocs: DocsContent = {
     metaTitle: "Indexer and dashboard — Spare documentation",
     lead: "The public record of what foundations receive through Spare.",
     blocks: [
-      { t: "planned", title: "Planned", body: "The indexer and the dashboard are not built yet. This page describes what they will do, and will change as they ship." },
       { t: "h2", id: "indexer", text: "Indexer" },
-      { t: "p", text: "Ingests registry events and tagged USDC payments, and can be rebuilt from Horizon. Donations are attributed to an app through the `spare:<appId>` memo; a donation that could not be tagged (`donation.attributed === false`) cannot be attributed to an app." },
+      { t: "p", text: "A scheduled GitHub Action (every 3 hours) ingests registry events and USDC payments to registered foundations and commits one deterministic `snapshot.json` to the `data` branch. If the RPC history window (about 7 days) is ever missed, a rebuild replays the full history from Horizon, never from RPC. Donations are attributed to an app only through the `spare:<appId>` memo; a payment without the tag is shown as unattributed, apart from the app totals." },
       { t: "h2", id: "dashboard", text: "Dashboard" },
-      { t: "p", text: "Public per-foundation pages with totals, apps and transaction links. It aggregates by app and foundation and never lists donor addresses." },
+      { t: "p", text: "The website reads `snapshot.json` from the `data` branch at build time and generates static pages: a foundations directory and a dashboard with one page per foundation, with the total received through Spare, the number of donations, totals per app, the unattributed amount shown apart, and transaction links. Only foundations that are domain-verified (listed in `ACCOUNTS` of their `stellar.toml`) and active in the registry appear. It aggregates by app and foundation and never lists donor addresses." },
     ],
   },
   "stellar-toml": {

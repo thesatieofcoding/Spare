@@ -100,8 +100,8 @@ Building your own UI? Use [`spare-sdk`](packages/spare-sdk) directly: `addDonati
 | [`contracts/registry`](contracts/registry) | Soroban foundation registry. No admin, no upgrade function, no funds. | ✅ Built · testnet · mainnet pending (D2) |
 | [`apps/website`](apps/website) | Site, docs and demo (Astro, EN/ES, light/dark). | ✅ [donatespare.xyz](https://donatespare.xyz) |
 | Demo app | Classic payment + donation and Soroban call + follow-up, on testnet and mainnet. | ✅ [donatespare.xyz/demo](https://donatespare.xyz/demo/) |
-| Indexer | Ingests registry events and tagged USDC payments; rebuildable from Horizon. | 🔜 D2 |
-| Dashboard | Public per-foundation pages with totals, apps and transaction links. | 🔜 D2 |
+| [`packages/spare-indexer`](packages/spare-indexer) | Indexer: ingests registry events and tagged USDC payments every 3 hours into `snapshot.json` on the `data` branch; rebuildable from Horizon. | ✅ Built · mainnet registry pending (D2) |
+| Dashboard | Static pages per foundation (verified and active only): total via Spare, count, apps, unattributed apart, transaction links; never donor addresses. Built from `data` at deploy time. | ✅ Built · [donatespare.xyz/en/dashboard](https://donatespare.xyz/en/dashboard/) |
 
 ## Deliverable 1 evidence
 
@@ -121,6 +121,19 @@ Building your own UI? Use [`spare-sdk`](packages/spare-sdk) directly: `addDonati
 Wallets used on mainnet: Varial (classic) and Ledger (classic and Soroban), both through Stellar Wallets Kit. Any wallet in the kit works the same way; LOBSTR was not used.
 
 Accounts: mainnet foundation `GBTDED5SE2QAKFQ3Y6NY75QGCKQTQ3Z6H3ZYM4PWUX3X36QMOKEEJFPQ` (domain-verified via [`stellar.toml`](https://donatespare.xyz/.well-known/stellar.toml); demo donations return to the builder), demo merchant `GAKPFMRQLR25DIFUIDWDJ4P6D7VGUSLNBWVNWA5OKA72M4LPUKTDHLUX`, Ledger payer `GDXCVX4JSUVS3JZFOWAVBNWAV4HLO3H4GF7ES3WDN7DEOLPTX4M5YF72`, Varial payer `GCLIUGHWZK75INDCRXQJDMYWZ2VKMLJPUHQHUU2A7FNBKSZJGQF5DGPN`.
+
+## Deliverable 2 evidence
+
+Skeleton: every row is TODO until the maintainer completes the steps in [`docs/ops/d2-runbook.md`](docs/ops/d2-runbook.md). No value below is final.
+
+| SOW evidence | Link |
+| --- | --- |
+| Registry contract on mainnet, verified build | TODO: mainnet contract id, deploy ledger, release `registry-v0.1.1` |
+| Human review of the registry contract | TODO: [review request, issue #15](https://github.com/thesatieofcoding/Spare/issues/15) (open). If there is no review by day 20, the contract is deployed labelled **unreviewed** and the review is published as a follow-up |
+| Demo foundation registered on mainnet | TODO: registration transaction |
+| Indexer running on a schedule | TODO: first green `indexer` workflow run, `data` branch snapshot |
+| Public dashboard | TODO: dashboard URL with the registered foundation |
+| Demo subdomain | TODO: `demo.donatespare.xyz` |
 
 ## Development
 
