@@ -37,6 +37,28 @@
       "permanent": true
     }
   ],
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/demo/",
+      "has": [
+        {
+          "type": "host",
+          "value": "demo.donatespare.xyz"
+        }
+      ]
+    },
+    {
+      "source": "/es/",
+      "destination": "/es/demo/",
+      "has": [
+        {
+          "type": "host",
+          "value": "demo.donatespare.xyz"
+        }
+      ]
+    }
+  ],
   "headers": [
     {
       "source": "/.well-known/stellar.toml",
