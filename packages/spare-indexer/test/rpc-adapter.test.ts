@@ -126,6 +126,23 @@ describe("rpc adapter: usdcTransfers", () => {
     expect(r.of("getEvents")[1]!.params.startLedger).toBeUndefined();
   });
 
+  it("a full page ending inside the latest ledger does not end pagination (remaining events are fetched)", async () => {
+    const page = rec("rpc-getEvents-usdc-anchor.json") as { events: Array<Record<string, unknown>> };
+    const latest = ANCHOR_LEDGER + 5;
+    const mk = (n: number) => ({ ...page.events[0]!, id: `0281223124124344321-${String(n).padStart(10, "0")}` });
+    const full = Array.from({ length: 200 }, (_, n) => mk(n));
+    const tail = [mk(500)];
+    const r = recorded({
+      getEvents: (p) =>
+        p.pagination?.cursor === undefined
+          ? { events: full, cursor: cursorAt(latest), latestLedger: latest, oldestLedger: 1 }
+          : { events: tail, cursor: cursorAt(latest) + "x", latestLedger: latest, oldestLedger: 1 },
+    });
+    const out = await all(adapter(r.transport).usdcTransfers([FOUNDATION_MAINNET], { ledger: ANCHOR_LEDGER }));
+    expect(out).toHaveLength(201);
+    expect(r.of("getEvents")).toHaveLength(2);
+  });
+
   it("a start ledger beyond the node tip yields nothing without querying events", async () => {
     const r = recorded();
     const out = await all(adapter(r.transport).usdcTransfers([FOUNDATION_MAINNET], { ledger: 65483339 }));

@@ -131,7 +131,9 @@ export function createRpcAdapter(opts: RpcAdapterOptions): RpcPort {
           seen.add(e.id);
           yield e;
         }
-        if (page.cursor === undefined || page.cursor === cursor || ledgerOfCursor(page.cursor) >= page.latestLedger) break;
+        if (page.cursor === undefined || page.cursor === cursor) break;
+        // A full page may end inside the tip ledger with more events behind it: only stop at the tip on a short page.
+        if (page.events.length < PAGE_LIMIT && ledgerOfCursor(page.cursor) >= page.latestLedger) break;
         cursor = page.cursor;
       }
     }
